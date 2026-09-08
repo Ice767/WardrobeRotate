@@ -1,0 +1,14 @@
+node_modules/
+
+.idea/
+.vscode/
+
+.DS_Store
+Thumbs.db
+
+.env
+.env.local
+.env.*.local
+
+backend/dist/
+frontend/dist/
