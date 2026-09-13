@@ -7,7 +7,7 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
 
 export const corsOptions: CorsOptions = {
     origin: (origin, callback) => {
-        // Нет заголовка Origin — это не браузер (curl, Postman, health-check).
+        // No Origin header means this is not a browser (curl, Postman, health checks).
         if (!origin) {
             callback(null, true);
             return;
