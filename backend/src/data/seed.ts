@@ -1,4 +1,5 @@
 import {createUserWithRole} from "../services/auth.service";
+import {seedReferenceData} from "./reference.seed";
 import {usersByEmail} from "./store";
 
 const ADMIN_EMAIL = "admin@logistics.dev";
@@ -7,6 +8,8 @@ const ADMIN_EMAIL = "admin@logistics.dev";
 // created through the API — registration always issues CLIENT. So it happens
 // here. In production a migration does this and the password comes from env.
 export const seedDemoData = async (): Promise<void> => {
+    seedReferenceData();
+
     if (usersByEmail.has(ADMIN_EMAIL)) {
         return;
     }
