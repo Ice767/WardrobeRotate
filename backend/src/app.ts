@@ -6,6 +6,7 @@ import {corsOptions} from "./config/cors.config";
 import {errorHandler} from "./middlewares/error.middleware";
 import authRouter from "./routes/auth.routes";
 import referenceRouter from "./routes/reference.routes";
+import userRouter from "./routes/user.routes";
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRouter);
+app.use("/api/users", userRouter);
 app.use("/api", referenceRouter);
 
 app.use(errorHandler);

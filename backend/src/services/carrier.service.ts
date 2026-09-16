@@ -18,6 +18,10 @@ export const listCarriers = (filter: ListCarriersFilter = {}): Carrier[] => {
     return carriers.sort((left, right) => left.name.localeCompare(right.name));
 };
 
+export const carrierExists = (carrierId: string): boolean => {
+    return carriersById.has(carrierId);
+};
+
 export const getCarrierById = (carrierId: string): Carrier => {
     const carrier = carriersById.get(carrierId);
 

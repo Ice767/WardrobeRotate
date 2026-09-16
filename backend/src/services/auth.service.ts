@@ -8,7 +8,8 @@ import type {
     UserRole,
 } from "../contracts/auth.contract";
 import {usersByEmail, usersById} from "../data/store";
-import {ConflictError, UnauthorizedError} from "../errors/app.error";
+import {BadRequestError, ConflictError, UnauthorizedError} from "../errors/app.error";
+import {carrierExists} from "./carrier.service";
 import {comparePassword, hashPassword} from "./password.service";
 
 // The single place where a StoredUser becomes something safe to send out.
@@ -87,6 +88,13 @@ export const createUserWithRole = async (input: {
 
     if (usersByEmail.has(email)) {
         throw new ConflictError("A user with this email already exists");
+    }
+
+    // Referential integrity, checked here because this is the only door through
+    // which a user gets a carrier: a manager bound to a carrier that does not
+    // exist would pass every later permission check and manage nothing.
+    if (input.carrierId !== undefined && !carrierExists(input.carrierId)) {
+        throw new BadRequestError("Unknown carrierId");
     }
 
     const user: StoredUser = {
