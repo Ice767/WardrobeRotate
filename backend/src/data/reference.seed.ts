@@ -1,3 +1,4 @@
+import type {CargoCategory} from "../contracts/cargo.contract";
 import type {TransportType} from "../contracts/transport.contract";
 import type {RegionLevel} from "../contracts/region.contract";
 import {stableId} from "../utils/stable-id";
@@ -101,6 +102,7 @@ interface CarrierSeed {
     name: string;
     legalName: string;
     supportedTransportTypes: TransportType[];
+    acceptedCargoCategories: CargoCategory[];
 }
 
 const CARRIER_SEEDS: CarrierSeed[] = [
@@ -109,24 +111,28 @@ const CARRIER_SEEDS: CarrierSeed[] = [
         name: "TransLogistic",
         legalName: "TransLogistic LLC",
         supportedTransportTypes: ["TRUCK", "LTL"],
+        acceptedCargoCategories: ["GENERAL", "OVERSIZED"],
     },
     {
         slug: "railcargo",
         name: "RailCargo",
         legalName: "RailCargo JSC",
         supportedTransportTypes: ["RAIL", "TRUCK"],
+        acceptedCargoCategories: ["GENERAL", "DANGEROUS", "OVERSIZED"],
     },
     {
         slug: "aerofreight",
         name: "AeroFreight",
         legalName: "AeroFreight LLC",
         supportedTransportTypes: ["AIR", "LTL"],
+        acceptedCargoCategories: ["GENERAL", "DANGEROUS", "TEMPERATURE_CONTROLLED", "VALUABLE", "LIVE_ANIMALS"],
     },
     {
         slug: "seatransline",
         name: "SeaTransLine",
         legalName: "SeaTransLine LLC",
         supportedTransportTypes: ["SEA", "TRUCK"],
+        acceptedCargoCategories: ["GENERAL", "DANGEROUS", "TEMPERATURE_CONTROLLED", "OVERSIZED"],
     },
 ];
 
@@ -182,6 +188,7 @@ export const seedReferenceData = (): void => {
             name: seed.name,
             legalName: seed.legalName,
             supportedTransportTypes: seed.supportedTransportTypes,
+            acceptedCargoCategories: seed.acceptedCargoCategories,
         });
     }
 };

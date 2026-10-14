@@ -5,6 +5,7 @@ import express from "express";
 import {corsOptions} from "./config/cors.config";
 import {errorHandler} from "./middlewares/error.middleware";
 import authRouter from "./routes/auth.routes";
+import quoteRouter from "./routes/quote.routes";
 import referenceRouter from "./routes/reference.routes";
 import tariffRouter from "./routes/tariff.routes";
 import userRouter from "./routes/user.routes";
@@ -25,6 +26,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/tariffs", tariffRouter);
+app.use("/api", quoteRouter);
 app.use("/api", referenceRouter);
 
 app.use(errorHandler);

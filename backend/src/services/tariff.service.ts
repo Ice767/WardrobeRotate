@@ -88,6 +88,13 @@ const assertLaneIsValid = (lane: TariffLaneKey): void => {
     }
 };
 
+/** Exact-lane lookup for pricing. No actor: quotes read every carrier's matrix. */
+export const findTariffForLane = (lane: TariffLaneKey): Tariff | undefined => {
+    const tariffId = tariffIdByLane.get(laneKeyOf(lane));
+
+    return tariffId === undefined ? undefined : tariffsById.get(tariffId);
+};
+
 /** Integrity-checked insert, shared by the API and the seed. */
 export const insertTariff = (tariff: Tariff): Tariff => {
     assertLaneIsValid(tariff);
