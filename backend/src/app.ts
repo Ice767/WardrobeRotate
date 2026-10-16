@@ -7,6 +7,7 @@ import {errorHandler} from "./middlewares/error.middleware";
 import authRouter from "./routes/auth.routes";
 import quoteRouter from "./routes/quote.routes";
 import referenceRouter from "./routes/reference.routes";
+import rfqRouter from "./routes/rfq.routes";
 import tariffRouter from "./routes/tariff.routes";
 import userRouter from "./routes/user.routes";
 
@@ -26,6 +27,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/tariffs", tariffRouter);
+app.use("/api/rfqs", rfqRouter);
 app.use("/api", quoteRouter);
 app.use("/api", referenceRouter);
 
