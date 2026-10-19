@@ -10,7 +10,7 @@ import type {
     RfqView,
     SubmitRfqQuoteInput,
 } from "../contracts/rfq.contract";
-import {rfqQuotesById, rfqsById} from "../data/store";
+import {carriersById, rfqQuotesById, rfqsById} from "../data/store";
 import {
     BadRequestError,
     ConflictError,
@@ -200,11 +200,20 @@ export const submitQuote = (
         throw new BadRequestError("validUntil must be in the future");
     }
 
+    if (rfq.transportType !== undefined && input.transportType !== rfq.transportType) {
+        throw new BadRequestError(`The client asked for ${rfq.transportType} only`);
+    }
+
+    if (!carriersById.get(actor.carrierId)?.supportedTransportTypes.includes(input.transportType)) {
+        throw new BadRequestError(`Your carrier does not operate ${input.transportType}`);
+    }
+
     const existing = quotesOf(rfqId).find((quote) => quote.carrierId === actor.carrierId);
     const quote: RfqQuote = {
         quoteId: existing?.quoteId ?? randomUUID(),
         rfqId,
         carrierId: actor.carrierId,
+        transportType: input.transportType,
         priceCents: input.priceCents,
         transitDays: input.transitDays,
         validUntil: input.validUntil,

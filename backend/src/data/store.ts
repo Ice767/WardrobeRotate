@@ -2,6 +2,7 @@ import type {StoredUser} from "../contracts/auth.contract";
 import type {Carrier} from "../contracts/carrier.contract";
 import type {Region} from "../contracts/region.contract";
 import type {Rfq, RfqQuote} from "../contracts/rfq.contract";
+import type {Shipment} from "../contracts/shipment.contract";
 import type {Tariff} from "../contracts/tariff.contract";
 
 // In-process memory store: data lives until restart. When a real database
@@ -18,3 +19,8 @@ export const tariffIdByLane = new Map<string, string>();
 
 export const rfqsById = new Map<string, Rfq>();
 export const rfqQuotesById = new Map<string, RfqQuote>();
+
+export const shipmentsById = new Map<string, Shipment>();
+export const shipmentIdByTrackingCode = new Map<string, string>();
+/** One accepted RFQ books at most one shipment. */
+export const shipmentIdByRfqId = new Map<string, string>();

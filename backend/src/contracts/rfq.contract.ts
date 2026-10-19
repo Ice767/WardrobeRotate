@@ -40,6 +40,8 @@ export interface RfqQuote {
     quoteId: string;
     rfqId: string;
     carrierId: string;
+    /** How the carrier means to move it; part of what the client is accepting. */
+    transportType: TransportType;
     priceCents: number;
     transitDays: number;
     /** The carrier's own deadline for this price; accepting after it is refused. */
@@ -71,7 +73,7 @@ export type CreateRfqInput = Pick<
 
 export type SubmitRfqQuoteInput = Pick<
     RfqQuote,
-    "priceCents" | "transitDays" | "validUntil" | "comment"
+    "transportType" | "priceCents" | "transitDays" | "validUntil" | "comment"
 >;
 
 /** What a given actor gets back: the RFQ as they are allowed to see it. */

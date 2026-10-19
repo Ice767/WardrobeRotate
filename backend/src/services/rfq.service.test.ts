@@ -41,7 +41,12 @@ const valuableToChicago: CreateRfqInput = {
     declaredValueCents: 250_000_000,
 };
 
-const quote = (priceCents: number) => ({priceCents, transitDays: 5, validUntil: VALID_UNTIL});
+const quote = (priceCents: number, transportType: "SEA" | "AIR" = "SEA") => ({
+    transportType,
+    priceCents,
+    transitDays: 5,
+    validUntil: VALID_UNTIL,
+});
 
 describe("RFQ", () => {
     before(() => {
@@ -79,7 +84,7 @@ describe("RFQ", () => {
     it("shows each carrier only its own quote, and the client all of them", () => {
         const rfq = createRfq(client, dangerousToHouston, NOW);
         submitQuote(seaManager, rfq.rfqId, quote(300_000), NOW);
-        submitQuote(aeroManager, rfq.rfqId, quote(1_900_000), NOW);
+        submitQuote(aeroManager, rfq.rfqId, quote(1_900_000, "AIR"), NOW);
 
         const seen = getRfq(seaManager, rfq.rfqId, NOW).quotes;
         assert.equal(seen.length, 1);
@@ -109,7 +114,7 @@ describe("RFQ", () => {
 
         assert.equal(getRfq(client, rfq.rfqId, NOW).description, "Diamonds, 3 parcels");
 
-        const submitted = submitQuote(aeroManager, rfq.rfqId, quote(900_000), NOW);
+        const submitted = submitQuote(aeroManager, rfq.rfqId, quote(900_000, "AIR"), NOW);
         acceptQuote(client, rfq.rfqId, submitted.quotes[0]!.quoteId, NOW);
 
         const after = getRfq(aeroManager, rfq.rfqId, NOW);
@@ -126,7 +131,7 @@ describe("RFQ", () => {
     it("accepts one quote, declines the rest and closes the RFQ", () => {
         const rfq = createRfq(client, dangerousToHouston, NOW);
         const seaQuoteId = submitQuote(seaManager, rfq.rfqId, quote(300_000), NOW).quotes[0]!.quoteId;
-        submitQuote(aeroManager, rfq.rfqId, quote(1_900_000), NOW);
+        submitQuote(aeroManager, rfq.rfqId, quote(1_900_000, "AIR"), NOW);
 
         const accepted = acceptQuote(client, rfq.rfqId, seaQuoteId, NOW);
 
@@ -136,7 +141,7 @@ describe("RFQ", () => {
             accepted.quotes.map((q) => [q.carrierId, q.status]),
             [[SEA, "ACCEPTED"], [AERO, "DECLINED"]],
         );
-        assert.throws(() => submitQuote(aeroManager, rfq.rfqId, quote(1_000), NOW), ConflictError);
+        assert.throws(() => submitQuote(aeroManager, rfq.rfqId, quote(1_000, "AIR"), NOW), ConflictError);
     });
 
     it("refuses to accept a quote past its validUntil", () => {
@@ -154,6 +159,14 @@ describe("RFQ", () => {
 
         assert.equal(getRfq(client, rfq.rfqId, IN_8_DAYS).status, "EXPIRED");
         assert.throws(() => submitQuote(seaManager, rfq.rfqId, quote(300_000), IN_8_DAYS), ConflictError);
+    });
+
+    it("refuses a transport type the carrier does not run or the client excluded", () => {
+        const rfq = createRfq(client, dangerousToHouston, NOW);
+        assert.throws(() => submitQuote(seaManager, rfq.rfqId, quote(300_000, "AIR"), NOW), BadRequestError);
+
+        const seaOnly = createRfq(client, {...dangerousToHouston, transportType: "SEA"}, NOW);
+        assert.throws(() => submitQuote(aeroManager, seaOnly.rfqId, quote(1_900_000, "AIR"), NOW), NotFoundError);
     });
 
     it("lets only the filing client accept or cancel", () => {

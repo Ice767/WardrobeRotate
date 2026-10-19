@@ -33,6 +33,7 @@ export const createRfqSchema = z
     });
 
 export const submitRfqQuoteSchema = z.strictObject({
+    transportType: z.enum(TRANSPORT_TYPES),
     priceCents: z.number().int().positive().max(MAX_CENTS),
     transitDays: z.number().int().min(1).max(MAX_TRANSIT_DAYS),
     validUntil: z.string().datetime(),
