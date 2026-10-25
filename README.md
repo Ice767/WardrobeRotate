@@ -8,10 +8,10 @@ prices a shipment against them.
 > The repository is still named `WardrobeRotate` after an earlier idea that was
 > dropped. The code here is the freight marketplace described above.
 
-**Status:** backend in progress. Authentication and reference data are done; the
-tariff matrix, the price calculator and search are not written yet. The frontend
-is scaffolded (Vite + React 19) but `frontend/src` is empty, so only the backend
-runs today.
+**Status:** the client journey works end to end — price a shipment, request
+firm prices for special cargo, accept a quote, book, track. Carriers have a
+complete API but no screens yet. Data lives in process memory, so this is not
+yet deployable beyond a single demo server; see [docs/deploy-aws.md](docs/deploy-aws.md).
 
 ## Quick start
 
@@ -22,12 +22,20 @@ npm install
 npm run dev          # http://localhost:3100
 ```
 
+```bash
+cd frontend
+npm install
+npm run dev          # http://localhost:5173, proxies /api to the backend
+```
+
 The server seeds itself on every boot and refuses to start if seeding fails.
 Seeded admin: `admin@logistics.dev` / `AdminPass123!` (override the password with
-`SEED_ADMIN_PASSWORD`). All data lives in process memory and is gone on restart.
+`SEED_ADMIN_PASSWORD`, and always do so outside your laptop). All data lives in
+process memory and is gone on restart.
 
 ```bash
-cd backend && npm test    # tsc + node --test; no test files yet, so 0 tests
+cd backend && npm test     # tsc + node --test
+cd frontend && npm test    # vitest
 ```
 
 ## API
@@ -46,6 +54,17 @@ Reference data is public; everything else expects the auth cookie.
 | `GET` | `/api/transport-types` | limits and volumetric factors per type |
 | `GET` | `/api/carriers` | filter: `?transportType=` |
 | `GET` | `/api/carriers/:carrierId` | |
+| `GET` | `/api/cargo-categories` | pricing mode per category: instant, indicative range, on request |
+| `POST` | `/api/quotes` | public; offers from every eligible carrier |
+| `POST` | `/api/users` | `ADMIN`; creates managers bound to a carrier |
+| `GET` `POST` | `/api/tariffs` | `MANAGER` (own carrier only) and `ADMIN` |
+| `GET` `PATCH` `DELETE` | `/api/tariffs/:tariffId` | lane is immutable; a competitor's tariff answers 404 |
+| `GET` `POST` | `/api/rfqs` | requests for firm prices; `CLIENT` files them |
+| `POST` | `/api/rfqs/:rfqId/quotes` | invited carrier's `MANAGER` answers |
+| `POST` | `/api/rfqs/:rfqId/accept` · `cancel` | the filing `CLIENT` |
+| `GET` `POST` | `/api/shipments` | `CLIENT` books from an instant offer or an accepted RFQ |
+| `POST` | `/api/shipments/:shipmentId/status` | allowed moves come from the transition table |
+| `GET` | `/api/track/:trackingCode` | public; route and timeline only |
 
 Every response is wrapped in an envelope carrying a `correlationId`:
 
@@ -70,35 +89,41 @@ Every response is wrapped in an envelope carrying a `correlationId`:
   than data, so it is a frozen constant in code and not editable through the API.
 - **Carrier** — a shipping company. Search returns competing offers from several.
 - **Tariff** — the core matrix: `(carrier, from, to, transportType)` →
-  `pricePerKg`, `pricePerM3`, `minCharge`, `transitDays`. *Not built yet.*
-- **Surcharge** — fuel, hazmat, oversize, insurance. Separate from tariffs
-  because it changes far more often. *Not built yet.*
-- **Shipment** — `DRAFT → CONFIRMED → PICKED_UP → IN_TRANSIT → DELIVERED`, or
-  `CANCELLED`. *Not built yet.*
+  `pricePerKgCents`, `pricePerM3Cents`, `minChargeCents`, `transitDays`. Money is
+  integer cents throughout.
+- **Cargo category** — general, dangerous, temperature-controlled, oversized,
+  valuables, live animals, after IATA special handling codes. Decides whether a
+  client sees an exact price, a range, or "on request".
+- **RFQ** — a request for firm prices, sent to every eligible carrier; each
+  answers once, the client accepts one.
+- **Shipment** — `CONFIRMED → PICKED_UP → IN_TRANSIT → DELIVERED`, or `CANCELLED`
+  before pickup. Price frozen at booking; public tracking by code.
+- **Surcharge** — fuel, hazmat, oversize, insurance. *Not built yet*; special
+  cargo is priced through ranges and RFQs instead.
 
 ### Roles
 
 | Role | Can |
 | --- | --- |
-| `CLIENT` | request quotes, book shipments |
-| `MANAGER` | manage tariffs for the one carrier named by their `carrierId` |
+| `CLIENT` | price shipments, file and accept RFQs, book, cancel before pickup |
+| `MANAGER` | for the one carrier named by their `carrierId`: tariffs, RFQ answers, shipment progress |
 | `ADMIN` | everything, including creating managers |
 
 Registration always issues `CLIENT` — the role cannot be set through the request
 body. `MANAGER` and `ADMIN` accounts are created server-side only.
 
-### Pricing (planned)
+### Pricing
 
 ```
 volumetricWeight = volumeM3 x volumetricFactorKgPerM3   // 167 air, 250 truck, 1000 sea
 chargeableWeight = max(actualWeight, volumetricWeight)
-base             = max(chargeableWeight x pricePerKg, minCharge)
-total            = base + percentage surcharges + flat surcharges
+freight          = max(chargeableWeight x pricePerKg, volumeM3 x pricePerM3)
+total            = ceil(max(freight, minCharge))         // rounded once, upward
 ```
 
-Light bulky freight is charged by the space it occupies, not by the scale. This
-calculator is the centerpiece of the project and will be a pure, unit-tested
-function.
+Light bulky freight is charged by the space it occupies, not by the scale. The
+calculator is a pure function in `services/price.calculator.ts`; the narrowest
+matching lane wins, even when a broader one is cheaper.
 
 ## Implementation notes
 
@@ -122,8 +147,10 @@ function.
 - No refresh token — one JWT access token in an httpOnly cookie, 1 day TTL.
 - No password reset by email.
 - No generated OpenAPI/Swagger documentation.
-- No AWS Lambda or gateway layer; a deployment guide comes once there is
-  something substantial to deploy.
+- No persistent database yet; [docs/deploy-aws.md](docs/deploy-aws.md) covers
+  what has to change before production.
+- No carrier or admin screens; their API is complete.
+- No email or SMS notifications.
 
 ## Environment
 
