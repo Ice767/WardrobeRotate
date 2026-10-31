@@ -8,9 +8,10 @@ const authCookieOptions: CookieOptions = {
     httpOnly: true,
     // Never send over plain HTTP. Off in dev, otherwise localhost breaks.
     secure: isProduction,
-    // lax in dev (front and back share localhost through a proxy),
-    // none in production, where the domains differ.
-    sameSite: isProduction ? "none" : "lax",
+    // The frontend reaches the API on its own origin (/api, proxied), so the
+    // cookie is always first-party. lax keeps it off requests started by other
+    // sites, which is the CSRF protection this API relies on.
+    sameSite: "lax",
     path: "/",
 };
 
