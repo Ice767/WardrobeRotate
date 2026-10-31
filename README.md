@@ -158,7 +158,7 @@ matching lane wins, even when a broader one is cheaper.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `PORT` | `3100` | HTTP port |
-| `NODE_ENV` | `development` | drives cookie `secure` / `sameSite` |
+| `NODE_ENV` | `development` | `production` sets the cookie `secure` and requires `SEED_ADMIN_PASSWORD` |
 | `LOG_LEVEL` | `info` | pino level |
 | `ALLOWED_ORIGINS` | `http://localhost:5173` | comma-separated CORS allowlist; the origin is echoed back, never `*`, because the cookie is credentialed |
 | `JWT_ACCESS_SECRET` | — | required; the server will not start without it |
