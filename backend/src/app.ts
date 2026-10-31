@@ -14,6 +14,16 @@ import userRouter from "./routes/user.routes";
 
 const app = express();
 
+// Behind a reverse proxy every request arrives from the proxy's address, and
+// the rate limits would lump all users into one bucket. TRUST_PROXY is the
+// number of proxies in front of the app; only then is X-Forwarded-For believed.
+// Never set it when clients can reach the app directly: they could forge it.
+const trustedProxyHops = Number(process.env.TRUST_PROXY ?? 0);
+
+if (Number.isInteger(trustedProxyHops) && trustedProxyHops > 0) {
+    app.set("trust proxy", trustedProxyHops);
+}
+
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());

@@ -164,3 +164,4 @@ matching lane wins, even when a broader one is cheaper.
 | `JWT_ACCESS_SECRET` | — | required; the server will not start without it |
 | `JWT_ACCESS_TTL` | `1d` | also determines the cookie's lifetime |
 | `SEED_ADMIN_PASSWORD` | `AdminPass123!` outside production | password for the seeded admin; required in production |
+| `TRUST_PROXY` | unset | number of reverse proxies in front of the API; set it there, or the sign-in rate limit sees one address for everyone. Never set it when clients reach the API directly |
