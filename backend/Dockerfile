@@ -2,8 +2,8 @@ FROM node:24-bookworm-slim AS builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
 COPY tsconfig.json ./
 COPY src ./src
@@ -17,8 +17,8 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-RUN npm install --omit=dev \
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev \
     && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
