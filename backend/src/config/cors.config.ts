@@ -13,7 +13,10 @@ export const corsOptions: CorsOptions = {
             return;
         }
 
-        if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+        // Exact matches only, and "*" means nothing here: with credentials on,
+        // a wildcard would let any website make requests as the signed-in user
+        // and read the answers.
+        if (allowedOrigins.includes(origin)) {
             callback(null, true);
             return;
         }
