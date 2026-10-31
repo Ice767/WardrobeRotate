@@ -27,14 +27,29 @@ const toPublicUser = (user: StoredUser): PublicUser => {
 
 const normalizeEmail = (email: string): string => email.trim().toLowerCase();
 
+const assertEmailFree = (email: string): void => {
+    if (usersByEmail.has(email)) {
+        throw new ConflictError("A user with this email already exists");
+    }
+};
+
+// Called after hashing, with no await between the check and the writes. The
+// early check only spares a pointless hash; this one is what keeps two
+// concurrent sign-ups for one email from both landing, since the ~100 ms hash
+// lets a second request pass the early check before the first one is stored.
+const insertUser = (user: StoredUser): void => {
+    assertEmailFree(user.email);
+
+    usersById.set(user.userId, user);
+    usersByEmail.set(user.email, user);
+};
+
 export const registerUser = async (
     input: RegisterUserRequestBody,
 ): Promise<PublicUser> => {
     const email = normalizeEmail(input.email);
 
-    if (usersByEmail.has(email)) {
-        throw new ConflictError("A user with this email already exists");
-    }
+    assertEmailFree(email);
 
     const user: StoredUser = {
         userId: randomUUID(),
@@ -46,8 +61,7 @@ export const registerUser = async (
         createdAt: new Date().toISOString(),
     };
 
-    usersById.set(user.userId, user);
-    usersByEmail.set(user.email, user);
+    insertUser(user);
 
     return toPublicUser(user);
 };
@@ -86,9 +100,7 @@ export const createUserWithRole = async (input: {
 }): Promise<PublicUser> => {
     const email = normalizeEmail(input.email);
 
-    if (usersByEmail.has(email)) {
-        throw new ConflictError("A user with this email already exists");
-    }
+    assertEmailFree(email);
 
     // Referential integrity, checked here because this is the only door through
     // which a user gets a carrier: a manager bound to a carrier that does not
@@ -108,8 +120,7 @@ export const createUserWithRole = async (input: {
         createdAt: new Date().toISOString(),
     };
 
-    usersById.set(user.userId, user);
-    usersByEmail.set(user.email, user);
+    insertUser(user);
 
     return toPublicUser(user);
 };
