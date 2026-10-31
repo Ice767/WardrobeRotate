@@ -29,8 +29,9 @@ npm run dev          # http://localhost:5173, proxies /api to the backend
 ```
 
 The server seeds itself on every boot and refuses to start if seeding fails.
-Seeded admin: `admin@logistics.dev` / `AdminPass123!` (override the password with
-`SEED_ADMIN_PASSWORD`, and always do so outside your laptop). All data lives in
+Seeded admin: `admin@logistics.dev` / `AdminPass123!` in development. With
+`NODE_ENV=production` there is no default: the server refuses to start until
+`SEED_ADMIN_PASSWORD` is set. All data lives in
 process memory and is gone on restart.
 
 ```bash
@@ -162,4 +163,4 @@ matching lane wins, even when a broader one is cheaper.
 | `ALLOWED_ORIGINS` | `http://localhost:5173` | comma-separated CORS allowlist; the origin is echoed back, never `*`, because the cookie is credentialed |
 | `JWT_ACCESS_SECRET` | — | required; the server will not start without it |
 | `JWT_ACCESS_TTL` | `1d` | also determines the cookie's lifetime |
-| `SEED_ADMIN_PASSWORD` | `AdminPass123!` | password for the seeded admin |
+| `SEED_ADMIN_PASSWORD` | `AdminPass123!` outside production | password for the seeded admin; required in production |
