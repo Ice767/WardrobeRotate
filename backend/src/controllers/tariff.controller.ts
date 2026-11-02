@@ -33,13 +33,13 @@ const actorOf = (req: Request): TariffActor => {
 
 const tariffIdOf = (req: Request): string => (req.params as {tariffId: string}).tariffId;
 
-export const listTariffs = (req: Request, res: Response, next: NextFunction): void => {
+export const listTariffs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const correlationId = randomUUID();
     res.locals.correlationId = correlationId;
 
     try {
         const filter = res.locals.validatedQuery as ListTariffsFilter;
-        const tariffs = tariffService.listTariffs(actorOf(req), filter);
+        const tariffs = await tariffService.listTariffs(actorOf(req), filter);
 
         res.status(HTTP_OK).json(successResponse(tariffs, correlationId));
     } catch (error) {
@@ -47,12 +47,12 @@ export const listTariffs = (req: Request, res: Response, next: NextFunction): vo
     }
 };
 
-export const getTariff = (req: Request, res: Response, next: NextFunction): void => {
+export const getTariff = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const correlationId = randomUUID();
     res.locals.correlationId = correlationId;
 
     try {
-        const tariff = tariffService.getTariff(actorOf(req), tariffIdOf(req));
+        const tariff = await tariffService.getTariff(actorOf(req), tariffIdOf(req));
 
         res.status(HTTP_OK).json(successResponse(tariff, correlationId));
     } catch (error) {
@@ -60,12 +60,12 @@ export const getTariff = (req: Request, res: Response, next: NextFunction): void
     }
 };
 
-export const createTariff = (req: Request, res: Response, next: NextFunction): void => {
+export const createTariff = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const correlationId = randomUUID();
     res.locals.correlationId = correlationId;
 
     try {
-        const tariff = tariffService.createTariff(actorOf(req), req.body as CreateTariffInput);
+        const tariff = await tariffService.createTariff(actorOf(req), req.body as CreateTariffInput);
 
         res.status(HTTP_CREATED).json(successResponse(tariff, correlationId));
     } catch (error) {
@@ -73,12 +73,12 @@ export const createTariff = (req: Request, res: Response, next: NextFunction): v
     }
 };
 
-export const updateTariff = (req: Request, res: Response, next: NextFunction): void => {
+export const updateTariff = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const correlationId = randomUUID();
     res.locals.correlationId = correlationId;
 
     try {
-        const tariff = tariffService.updateTariff(
+        const tariff = await tariffService.updateTariff(
             actorOf(req),
             tariffIdOf(req),
             req.body as UpdateTariffInput,
@@ -90,9 +90,9 @@ export const updateTariff = (req: Request, res: Response, next: NextFunction): v
     }
 };
 
-export const deleteTariff = (req: Request, res: Response, next: NextFunction): void => {
+export const deleteTariff = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        tariffService.deleteTariff(actorOf(req), tariffIdOf(req));
+        await tariffService.deleteTariff(actorOf(req), tariffIdOf(req));
         res.status(HTTP_NO_CONTENT).send();
     } catch (error) {
         next(error);

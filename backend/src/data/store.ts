@@ -1,26 +1,8 @@
-import type {StoredUser} from "../contracts/auth.contract";
 import type {Carrier} from "../contracts/carrier.contract";
 import type {Region} from "../contracts/region.contract";
-import type {Rfq, RfqQuote} from "../contracts/rfq.contract";
-import type {Shipment} from "../contracts/shipment.contract";
-import type {Tariff} from "../contracts/tariff.contract";
 
-// In-process memory store: data lives until restart. When a real database
-// arrives this module is what gets replaced — the services stay untouched.
-export const usersById = new Map<string, StoredUser>();
-export const usersByEmail = new Map<string, StoredUser>();
-
+// Reference data defined in code and rebuilt on every boot from the seeds:
+// regions and carriers, like transport types, change with a deploy rather than
+// through the API. Everything users create lives behind ../repositories.
 export const regionsById = new Map<string, Region>();
 export const carriersById = new Map<string, Carrier>();
-
-export const tariffsById = new Map<string, Tariff>();
-/** Lane key -> tariffId. Enforces one tariff per lane without scanning. */
-export const tariffIdByLane = new Map<string, string>();
-
-export const rfqsById = new Map<string, Rfq>();
-export const rfqQuotesById = new Map<string, RfqQuote>();
-
-export const shipmentsById = new Map<string, Shipment>();
-export const shipmentIdByTrackingCode = new Map<string, string>();
-/** One accepted RFQ books at most one shipment. */
-export const shipmentIdByRfqId = new Map<string, string>();

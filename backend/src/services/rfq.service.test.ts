@@ -49,91 +49,92 @@ const quote = (priceCents: number, transportType: "SEA" | "AIR" = "SEA") => ({
 });
 
 describe("RFQ", () => {
-    before(() => {
+    before(async () => {
         seedReferenceData();
-        seedTariffs();
+        await seedTariffs();
     });
 
-    it("refuses categories that already have an instant price", () => {
-        assert.throws(() => createRfq(client, {...dangerousToHouston, cargoCategory: "GENERAL"}, NOW), BadRequestError);
+    it("refuses categories that already have an instant price", async () => {
+        await assert.rejects(createRfq(client, {...dangerousToHouston, cargoCategory: "GENERAL"}, NOW), BadRequestError);
     });
 
-    it("refuses a shipment no carrier can take", () => {
-        assert.throws(
-            () => createRfq(client, {...dangerousToHouston, cargoCategory: "LIVE_ANIMALS", transportType: "SEA"}, NOW),
+    it("refuses a shipment no carrier can take", async () => {
+        await assert.rejects(
+            createRfq(client, {...dangerousToHouston, cargoCategory: "LIVE_ANIMALS", transportType: "SEA"}, NOW),
             BadRequestError,
         );
     });
 
-    it("invites exactly the carriers the calculator finds eligible", () => {
-        const rfq = createRfq(client, dangerousToHouston, NOW);
+    it("invites exactly the carriers the calculator finds eligible", async () => {
+        const rfq = await createRfq(client, dangerousToHouston, NOW);
 
         assert.deepEqual(new Set(rfq.eligibleCarrierIds), new Set([AERO, SEA]));
         assert.equal(rfq.status, "OPEN");
     });
 
-    it("is invisible to other clients and to carriers that were not invited", () => {
-        const rfq = createRfq(client, dangerousToHouston, NOW);
+    it("is invisible to other clients and to carriers that were not invited", async () => {
+        const rfq = await createRfq(client, dangerousToHouston, NOW);
 
-        assert.throws(() => getRfq(otherClient, rfq.rfqId, NOW), NotFoundError);
-        assert.throws(() => getRfq(transManager, rfq.rfqId, NOW), NotFoundError);
-        assert.equal(getRfq(seaManager, rfq.rfqId, NOW).rfqId, rfq.rfqId);
-        assert.equal(getRfq(admin, rfq.rfqId, NOW).rfqId, rfq.rfqId);
+        await assert.rejects(getRfq(otherClient, rfq.rfqId, NOW), NotFoundError);
+        await assert.rejects(getRfq(transManager, rfq.rfqId, NOW), NotFoundError);
+        assert.equal((await getRfq(seaManager, rfq.rfqId, NOW)).rfqId, rfq.rfqId);
+        assert.equal((await getRfq(admin, rfq.rfqId, NOW)).rfqId, rfq.rfqId);
     });
 
-    it("shows each carrier only its own quote, and the client all of them", () => {
-        const rfq = createRfq(client, dangerousToHouston, NOW);
-        submitQuote(seaManager, rfq.rfqId, quote(300_000), NOW);
-        submitQuote(aeroManager, rfq.rfqId, quote(1_900_000, "AIR"), NOW);
+    it("shows each carrier only its own quote, and the client all of them", async () => {
+        const rfq = await createRfq(client, dangerousToHouston, NOW);
+        await submitQuote(seaManager, rfq.rfqId, quote(300_000), NOW);
+        await submitQuote(aeroManager, rfq.rfqId, quote(1_900_000, "AIR"), NOW);
 
-        const seen = getRfq(seaManager, rfq.rfqId, NOW).quotes;
+        const seen = (await getRfq(seaManager, rfq.rfqId, NOW)).quotes;
         assert.equal(seen.length, 1);
         assert.equal(seen[0]?.carrierId, SEA);
 
-        const all = getRfq(client, rfq.rfqId, NOW).quotes;
+        const all = (await getRfq(client, rfq.rfqId, NOW)).quotes;
         assert.deepEqual(all.map((q) => q.priceCents), [300_000, 1_900_000]);
     });
 
-    it("lets a carrier revise its quote instead of adding a second one", () => {
-        const rfq = createRfq(client, dangerousToHouston, NOW);
-        submitQuote(seaManager, rfq.rfqId, quote(300_000), NOW);
-        submitQuote(seaManager, rfq.rfqId, quote(280_000), NOW);
+    it("lets a carrier revise its quote instead of adding a second one", async () => {
+        const rfq = await createRfq(client, dangerousToHouston, NOW);
+        const first = (await submitQuote(seaManager, rfq.rfqId, quote(300_000), NOW)).quotes[0]!;
+        await submitQuote(seaManager, rfq.rfqId, quote(280_000), NOW);
 
-        const quotes = getRfq(client, rfq.rfqId, NOW).quotes;
+        const quotes = (await getRfq(client, rfq.rfqId, NOW)).quotes;
         assert.equal(quotes.length, 1);
         assert.equal(quotes[0]?.priceCents, 280_000);
+        assert.equal(quotes[0]?.quoteId, first.quoteId);
     });
 
-    it("hides valuable-cargo details from carriers until their quote is accepted", () => {
-        const rfq = createRfq(client, valuableToChicago, NOW);
+    it("hides valuable-cargo details from carriers until their quote is accepted", async () => {
+        const rfq = await createRfq(client, valuableToChicago, NOW);
 
-        const before = getRfq(aeroManager, rfq.rfqId, NOW);
-        assert.equal(before.detailsHidden, true);
-        assert.equal(before.description, undefined);
-        assert.equal(before.declaredValueCents, undefined);
+        const hidden = await getRfq(aeroManager, rfq.rfqId, NOW);
+        assert.equal(hidden.detailsHidden, true);
+        assert.equal(hidden.description, undefined);
+        assert.equal(hidden.declaredValueCents, undefined);
 
-        assert.equal(getRfq(client, rfq.rfqId, NOW).description, "Diamonds, 3 parcels");
+        assert.equal((await getRfq(client, rfq.rfqId, NOW)).description, "Diamonds, 3 parcels");
 
-        const submitted = submitQuote(aeroManager, rfq.rfqId, quote(900_000, "AIR"), NOW);
-        acceptQuote(client, rfq.rfqId, submitted.quotes[0]!.quoteId, NOW);
+        const submitted = await submitQuote(aeroManager, rfq.rfqId, quote(900_000, "AIR"), NOW);
+        await acceptQuote(client, rfq.rfqId, submitted.quotes[0]!.quoteId, NOW);
 
-        const after = getRfq(aeroManager, rfq.rfqId, NOW);
-        assert.equal(after.detailsHidden, false);
-        assert.equal(after.declaredValueCents, 250_000_000);
+        const shown = await getRfq(aeroManager, rfq.rfqId, NOW);
+        assert.equal(shown.detailsHidden, false);
+        assert.equal(shown.declaredValueCents, 250_000_000);
     });
 
-    it("does not hide details of non-valuable cargo — the carrier needs them to price", () => {
-        const rfq = createRfq(client, dangerousToHouston, NOW);
+    it("does not hide details of non-valuable cargo — the carrier needs them to price", async () => {
+        const rfq = await createRfq(client, dangerousToHouston, NOW);
 
-        assert.equal(getRfq(seaManager, rfq.rfqId, NOW).description, "UN1263 paint, 40 drums");
+        assert.equal((await getRfq(seaManager, rfq.rfqId, NOW)).description, "UN1263 paint, 40 drums");
     });
 
-    it("accepts one quote, declines the rest and closes the RFQ", () => {
-        const rfq = createRfq(client, dangerousToHouston, NOW);
-        const seaQuoteId = submitQuote(seaManager, rfq.rfqId, quote(300_000), NOW).quotes[0]!.quoteId;
-        submitQuote(aeroManager, rfq.rfqId, quote(1_900_000, "AIR"), NOW);
+    it("accepts one quote, declines the rest and closes the RFQ", async () => {
+        const rfq = await createRfq(client, dangerousToHouston, NOW);
+        const seaQuoteId = (await submitQuote(seaManager, rfq.rfqId, quote(300_000), NOW)).quotes[0]!.quoteId;
+        await submitQuote(aeroManager, rfq.rfqId, quote(1_900_000, "AIR"), NOW);
 
-        const accepted = acceptQuote(client, rfq.rfqId, seaQuoteId, NOW);
+        const accepted = await acceptQuote(client, rfq.rfqId, seaQuoteId, NOW);
 
         assert.equal(accepted.status, "ACCEPTED");
         assert.equal(accepted.acceptedQuoteId, seaQuoteId);
@@ -141,56 +142,67 @@ describe("RFQ", () => {
             accepted.quotes.map((q) => [q.carrierId, q.status]),
             [[SEA, "ACCEPTED"], [AERO, "DECLINED"]],
         );
-        assert.throws(() => submitQuote(aeroManager, rfq.rfqId, quote(1_000, "AIR"), NOW), ConflictError);
+        await assert.rejects(submitQuote(aeroManager, rfq.rfqId, quote(1_000, "AIR"), NOW), ConflictError);
     });
 
-    it("refuses to accept a quote past its validUntil", () => {
-        const rfq = createRfq(client, dangerousToHouston, NOW);
-        const quoteId = submitQuote(seaManager, rfq.rfqId, quote(300_000), NOW).quotes[0]!.quoteId;
+    it("accepts only once when two accepts race", async () => {
+        const rfq = await createRfq(client, dangerousToHouston, NOW);
+        const seaQuoteId = (await submitQuote(seaManager, rfq.rfqId, quote(300_000), NOW)).quotes[0]!.quoteId;
+        const aeroQuoteId = (await submitQuote(aeroManager, rfq.rfqId, quote(1_900_000, "AIR"), NOW)).quotes[0]!.quoteId;
 
-        assert.throws(
-            () => acceptQuote(client, rfq.rfqId, quoteId, new Date("2026-11-06T00:00:00.000Z")),
-            ConflictError,
-        );
+        const results = await Promise.allSettled([
+            acceptQuote(client, rfq.rfqId, seaQuoteId, NOW),
+            acceptQuote(client, rfq.rfqId, aeroQuoteId, NOW),
+        ]);
+
+        assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+        assert.equal((await getRfq(client, rfq.rfqId, NOW)).quotes.filter((q) => q.status === "ACCEPTED").length, 1);
     });
 
-    it("expires on read once its deadline has passed", () => {
-        const rfq = createRfq(client, dangerousToHouston, NOW);
+    it("refuses to accept a quote past its validUntil", async () => {
+        const rfq = await createRfq(client, dangerousToHouston, NOW);
+        const quoteId = (await submitQuote(seaManager, rfq.rfqId, quote(300_000), NOW)).quotes[0]!.quoteId;
 
-        assert.equal(getRfq(client, rfq.rfqId, IN_8_DAYS).status, "EXPIRED");
-        assert.throws(() => submitQuote(seaManager, rfq.rfqId, quote(300_000), IN_8_DAYS), ConflictError);
+        await assert.rejects(acceptQuote(client, rfq.rfqId, quoteId, new Date("2026-11-06T00:00:00.000Z")), ConflictError);
     });
 
-    it("refuses a transport type the carrier does not run or the client excluded", () => {
-        const rfq = createRfq(client, dangerousToHouston, NOW);
-        assert.throws(() => submitQuote(seaManager, rfq.rfqId, quote(300_000, "AIR"), NOW), BadRequestError);
+    it("expires on read once its deadline has passed", async () => {
+        const rfq = await createRfq(client, dangerousToHouston, NOW);
 
-        const seaOnly = createRfq(client, {...dangerousToHouston, transportType: "SEA"}, NOW);
-        assert.throws(() => submitQuote(aeroManager, seaOnly.rfqId, quote(1_900_000, "AIR"), NOW), NotFoundError);
+        assert.equal((await getRfq(client, rfq.rfqId, IN_8_DAYS)).status, "EXPIRED");
+        await assert.rejects(submitQuote(seaManager, rfq.rfqId, quote(300_000), IN_8_DAYS), ConflictError);
     });
 
-    it("lets only the filing client accept or cancel", () => {
-        const rfq = createRfq(client, dangerousToHouston, NOW);
-        const quoteId = submitQuote(seaManager, rfq.rfqId, quote(300_000), NOW).quotes[0]!.quoteId;
+    it("refuses a transport type the carrier does not run or the client excluded", async () => {
+        const rfq = await createRfq(client, dangerousToHouston, NOW);
+        await assert.rejects(submitQuote(seaManager, rfq.rfqId, quote(300_000, "AIR"), NOW), BadRequestError);
 
-        assert.throws(() => acceptQuote(seaManager, rfq.rfqId, quoteId, NOW), ForbiddenError);
-        assert.throws(() => cancelRfq(otherClient, rfq.rfqId, NOW), NotFoundError);
+        const seaOnly = await createRfq(client, {...dangerousToHouston, transportType: "SEA"}, NOW);
+        await assert.rejects(submitQuote(aeroManager, seaOnly.rfqId, quote(1_900_000, "AIR"), NOW), NotFoundError);
     });
 
-    it("cancels an open RFQ and declines its quotes", () => {
-        const rfq = createRfq(client, dangerousToHouston, NOW);
-        submitQuote(seaManager, rfq.rfqId, quote(300_000), NOW);
+    it("lets only the filing client accept or cancel", async () => {
+        const rfq = await createRfq(client, dangerousToHouston, NOW);
+        const quoteId = (await submitQuote(seaManager, rfq.rfqId, quote(300_000), NOW)).quotes[0]!.quoteId;
 
-        const cancelled = cancelRfq(client, rfq.rfqId, NOW);
+        await assert.rejects(acceptQuote(seaManager, rfq.rfqId, quoteId, NOW), ForbiddenError);
+        await assert.rejects(cancelRfq(otherClient, rfq.rfqId, NOW), NotFoundError);
+    });
+
+    it("cancels an open RFQ and declines its quotes", async () => {
+        const rfq = await createRfq(client, dangerousToHouston, NOW);
+        await submitQuote(seaManager, rfq.rfqId, quote(300_000), NOW);
+
+        const cancelled = await cancelRfq(client, rfq.rfqId, NOW);
 
         assert.equal(cancelled.status, "CANCELLED");
         assert.equal(cancelled.quotes[0]?.status, "DECLINED");
     });
 
-    it("lists only what the viewer may see", () => {
-        const ids = listRfqs(transManager, {}, NOW).map((r) => r.rfqId);
-        assert.deepEqual(ids, []);
-        assert.ok(listRfqs(otherClient, {}, NOW).length === 0);
-        assert.ok(listRfqs(client, {status: "OPEN"}, NOW).every((r) => r.status === "OPEN"));
+    it("lists only what the viewer may see", async () => {
+        assert.deepEqual(await listRfqs(transManager, {}, NOW), []);
+        assert.equal((await listRfqs(otherClient, {}, NOW)).length, 0);
+        assert.ok((await listRfqs(client, {status: "OPEN"}, NOW)).every((r) => r.status === "OPEN"));
+        assert.ok((await listRfqs(seaManager, {}, NOW)).every((r) => r.eligibleCarrierIds.includes(SEA)));
     });
 });

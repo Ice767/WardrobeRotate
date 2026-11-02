@@ -28,14 +28,14 @@ const rfqIdOf = (req: Request): string => (req.params as {rfqId: string}).rfqId;
 // Every RFQ handler differs only in the service call and the status code.
 const handle = (
     status: number,
-    run: (req: Request, res: Response) => RfqView | RfqView[],
+    run: (req: Request, res: Response) => Promise<RfqView | RfqView[]>,
 ) => {
-    return (req: Request, res: Response, next: NextFunction): void => {
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         const correlationId = randomUUID();
         res.locals.correlationId = correlationId;
 
         try {
-            res.status(status).json(successResponse(run(req, res), correlationId));
+            res.status(status).json(successResponse(await run(req, res), correlationId));
         } catch (error) {
             next(error);
         }

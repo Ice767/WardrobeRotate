@@ -10,13 +10,15 @@ import type {
     RfqView,
     SubmitRfqQuoteInput,
 } from "../contracts/rfq.contract";
-import {carriersById, rfqQuotesById, rfqsById} from "../data/store";
+import {carriersById} from "../data/store";
 import {
     BadRequestError,
     ConflictError,
     ForbiddenError,
     NotFoundError,
 } from "../errors/app.error";
+import {repos} from "../repositories";
+import type {Scope} from "../repositories/types";
 import {findQuotes} from "./quote.service";
 
 const RFQ_TTL_DAYS = 7;
@@ -28,20 +30,13 @@ export interface ListRfqsFilter {
 
 // Expiry is worked out when an RFQ is read, not by a timer. Nothing has to run
 // in the background, so this survives a process that sleeps between requests.
-const refreshStatus = (rfq: Rfq, now: Date): Rfq => {
+const refreshStatus = async (rfq: Rfq, now: Date): Promise<Rfq> => {
     if (rfq.status === "OPEN" && now.getTime() >= Date.parse(rfq.expiresAt)) {
-        const expired: Rfq = {...rfq, status: "EXPIRED"};
-        rfqsById.set(rfq.rfqId, expired);
-        return expired;
+        await repos().rfqs.expireIfDue(rfq.rfqId, now);
+        return {...rfq, status: "EXPIRED"};
     }
 
     return rfq;
-};
-
-const quotesOf = (rfqId: string): RfqQuote[] => {
-    return [...rfqQuotesById.values()]
-        .filter((quote) => quote.rfqId === rfqId)
-        .sort((left, right) => left.priceCents - right.priceCents);
 };
 
 const canSee = (actor: RfqActor, rfq: Rfq): boolean => {
@@ -56,10 +51,16 @@ const canSee = (actor: RfqActor, rfq: Rfq): boolean => {
     return actor.carrierId !== undefined && rfq.eligibleCarrierIds.includes(actor.carrierId);
 };
 
+const scopeOf = (actor: RfqActor): Scope => {
+    if (actor.role === "CLIENT") return {clientId: actor.userId};
+    if (actor.role === "MANAGER") return {carrierId: actor.carrierId ?? "00000000-0000-0000-0000-000000000000"};
+    return {};
+};
+
 // Anything not visible answers 404, never 403: confirming that someone else's
 // request exists already tells a competitor there is business on that lane.
-const findVisibleRfq = (actor: RfqActor, rfqId: string, now: Date): Rfq => {
-    const rfq = rfqsById.get(rfqId);
+const findVisibleRfq = async (actor: RfqActor, rfqId: string, now: Date): Promise<Rfq> => {
+    const rfq = await repos().rfqs.findById(rfqId);
 
     if (!rfq || !canSee(actor, rfq)) {
         throw new NotFoundError("RFQ not found");
@@ -68,8 +69,8 @@ const findVisibleRfq = (actor: RfqActor, rfqId: string, now: Date): Rfq => {
     return refreshStatus(rfq, now);
 };
 
-const findOwnRfq = (actor: RfqActor, rfqId: string, now: Date): Rfq => {
-    const rfq = findVisibleRfq(actor, rfqId, now);
+const findOwnRfq = async (actor: RfqActor, rfqId: string, now: Date): Promise<Rfq> => {
+    const rfq = await findVisibleRfq(actor, rfqId, now);
 
     if (actor.role !== "CLIENT") {
         throw new ForbiddenError("Only the client who filed the RFQ can do this");
@@ -92,8 +93,8 @@ const assertOpen = (rfq: Rfq): void => {
  * For VALUABLE cargo the description and declared value stay hidden from every
  * carrier until one quote is accepted, and then only from the others.
  */
-const toView = (actor: RfqActor, rfq: Rfq): RfqView => {
-    const allQuotes = quotesOf(rfq.rfqId);
+const toView = async (actor: RfqActor, rfq: Rfq): Promise<RfqView> => {
+    const allQuotes = await repos().rfqs.quotesOf(rfq.rfqId);
     const isCarrier = actor.role === "MANAGER";
 
     const quotes = isCarrier
@@ -115,11 +116,16 @@ const toView = (actor: RfqActor, rfq: Rfq): RfqView => {
     };
 };
 
-export const createRfq = (
+const reload = async (actor: RfqActor, rfqId: string): Promise<RfqView> => {
+    const rfq = await repos().rfqs.findById(rfqId);
+    return toView(actor, rfq!);
+};
+
+export const createRfq = async (
     actor: RfqActor,
     input: CreateRfqInput,
     now: Date = new Date(),
-): RfqView => {
+): Promise<RfqView> => {
     if (actor.role !== "CLIENT") {
         throw new ForbiddenError("Only clients can file an RFQ");
     }
@@ -127,16 +133,12 @@ export const createRfq = (
     // An exact, bookable price already exists for these; an RFQ would only
     // make the client wait for a number the calculator can give at once.
     if (CARGO_CATEGORY_SPECS[input.cargoCategory].pricingMode === "INSTANT") {
-        throw new BadRequestError(
-            `${input.cargoCategory} cargo has an instant price; use POST /api/quotes`,
-        );
+        throw new BadRequestError(`${input.cargoCategory} cargo has an instant price; use POST /api/quotes`);
     }
 
     // Same eligibility as the calculator: certified for the category, a lane on
     // the route, within the transport type's limits.
-    const eligibleCarrierIds = [
-        ...new Set(findQuotes(input).map((quote) => quote.carrierId)),
-    ];
+    const eligibleCarrierIds = [...new Set((await findQuotes(input)).map((quote) => quote.carrierId))];
 
     if (eligibleCarrierIds.length === 0) {
         throw new BadRequestError("No carrier on the platform can take this shipment");
@@ -160,40 +162,39 @@ export const createRfq = (
         expiresAt: new Date(now.getTime() + RFQ_TTL_DAYS * DAY_MS).toISOString(),
     };
 
-    rfqsById.set(rfq.rfqId, rfq);
+    await repos().rfqs.insert(rfq);
 
     return toView(actor, rfq);
 };
 
-export const listRfqs = (
+export const listRfqs = async (
     actor: RfqActor,
     filter: ListRfqsFilter = {},
     now: Date = new Date(),
-): RfqView[] => {
-    return [...rfqsById.values()]
-        .filter((rfq) => canSee(actor, rfq))
-        .map((rfq) => refreshStatus(rfq, now))
-        .filter((rfq) => filter.status === undefined || rfq.status === filter.status)
-        .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-        .map((rfq) => toView(actor, rfq));
+): Promise<RfqView[]> => {
+    const rfqs = await Promise.all((await repos().rfqs.list(scopeOf(actor))).map((rfq) => refreshStatus(rfq, now)));
+
+    return Promise.all(
+        rfqs.filter((rfq) => filter.status === undefined || rfq.status === filter.status).map((rfq) => toView(actor, rfq)),
+    );
 };
 
-export const getRfq = (actor: RfqActor, rfqId: string, now: Date = new Date()): RfqView => {
-    return toView(actor, findVisibleRfq(actor, rfqId, now));
+export const getRfq = async (actor: RfqActor, rfqId: string, now: Date = new Date()): Promise<RfqView> => {
+    return toView(actor, await findVisibleRfq(actor, rfqId, now));
 };
 
 /** Creates the carrier's quote, or replaces it while the RFQ is still open. */
-export const submitQuote = (
+export const submitQuote = async (
     actor: RfqActor,
     rfqId: string,
     input: SubmitRfqQuoteInput,
     now: Date = new Date(),
-): RfqView => {
+): Promise<RfqView> => {
     if (actor.role !== "MANAGER" || actor.carrierId === undefined) {
         throw new ForbiddenError("Only a carrier's manager can quote");
     }
 
-    const rfq = findVisibleRfq(actor, rfqId, now);
+    const rfq = await findVisibleRfq(actor, rfqId, now);
     assertOpen(rfq);
 
     if (Date.parse(input.validUntil) <= now.getTime()) {
@@ -208,9 +209,8 @@ export const submitQuote = (
         throw new BadRequestError(`Your carrier does not operate ${input.transportType}`);
     }
 
-    const existing = quotesOf(rfqId).find((quote) => quote.carrierId === actor.carrierId);
     const quote: RfqQuote = {
-        quoteId: existing?.quoteId ?? randomUUID(),
+        quoteId: randomUUID(),
         rfqId,
         carrierId: actor.carrierId,
         transportType: input.transportType,
@@ -219,25 +219,25 @@ export const submitQuote = (
         validUntil: input.validUntil,
         ...(input.comment !== undefined && {comment: input.comment}),
         status: "SUBMITTED",
-        createdAt: existing?.createdAt ?? now.toISOString(),
+        createdAt: now.toISOString(),
         updatedAt: now.toISOString(),
     };
 
-    rfqQuotesById.set(quote.quoteId, quote);
+    await repos().rfqs.upsertQuote(quote);
 
     return toView(actor, rfq);
 };
 
-export const acceptQuote = (
+export const acceptQuote = async (
     actor: RfqActor,
     rfqId: string,
     quoteId: string,
     now: Date = new Date(),
-): RfqView => {
-    const rfq = findOwnRfq(actor, rfqId, now);
+): Promise<RfqView> => {
+    const rfq = await findOwnRfq(actor, rfqId, now);
     assertOpen(rfq);
 
-    const chosen = rfqQuotesById.get(quoteId);
+    const chosen = await repos().rfqs.findQuote(quoteId);
 
     if (!chosen || chosen.rfqId !== rfqId) {
         throw new NotFoundError("Quote not found on this RFQ");
@@ -247,30 +247,22 @@ export const acceptQuote = (
         throw new ConflictError("This quote has passed its validUntil; ask the carrier to re-quote");
     }
 
-    for (const quote of quotesOf(rfqId)) {
-        rfqQuotesById.set(quote.quoteId, {
-            ...quote,
-            status: quote.quoteId === quoteId ? "ACCEPTED" : "DECLINED",
-            updatedAt: now.toISOString(),
-        });
+    // The read above can be stale by the time we write: the storage accepts
+    // only if the RFQ is still OPEN, and tells us if someone got there first.
+    if (!(await repos().rfqs.accept(rfqId, quoteId, now))) {
+        throw new ConflictError("This RFQ was closed while you were accepting");
     }
 
-    const accepted: Rfq = {...rfq, status: "ACCEPTED", acceptedQuoteId: quoteId};
-    rfqsById.set(rfqId, accepted);
-
-    return toView(actor, accepted);
+    return reload(actor, rfqId);
 };
 
-export const cancelRfq = (actor: RfqActor, rfqId: string, now: Date = new Date()): RfqView => {
-    const rfq = findOwnRfq(actor, rfqId, now);
+export const cancelRfq = async (actor: RfqActor, rfqId: string, now: Date = new Date()): Promise<RfqView> => {
+    const rfq = await findOwnRfq(actor, rfqId, now);
     assertOpen(rfq);
 
-    for (const quote of quotesOf(rfqId)) {
-        rfqQuotesById.set(quote.quoteId, {...quote, status: "DECLINED", updatedAt: now.toISOString()});
+    if (!(await repos().rfqs.cancel(rfqId, now))) {
+        throw new ConflictError("This RFQ was closed while you were cancelling");
     }
 
-    const cancelled: Rfq = {...rfq, status: "CANCELLED"};
-    rfqsById.set(rfqId, cancelled);
-
-    return toView(actor, cancelled);
+    return reload(actor, rfqId);
 };

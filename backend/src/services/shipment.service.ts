@@ -9,13 +9,14 @@ import type {
     ShipmentActor,
     ShipmentStatus,
 } from "../contracts/shipment.contract";
-import {shipmentIdByRfqId, shipmentIdByTrackingCode, shipmentsById} from "../data/store";
 import {
     BadRequestError,
     ConflictError,
     ForbiddenError,
     NotFoundError,
 } from "../errors/app.error";
+import {DuplicateError, repos} from "../repositories";
+import type {Scope} from "../repositories/types";
 import {findQuotes} from "./quote.service";
 import {getRfq} from "./rfq.service";
 import {checkTransition} from "./shipment.state";
@@ -28,19 +29,14 @@ export interface ListShipmentsFilter {
 // cannot be misheard as a digit.
 const CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const CODE_LENGTH = 8;
+const CODE_ATTEMPTS = 5;
 
 // Random, not a running counter: a counter needs one shared sequence that every
 // server increments atomically, and a sequential code lets anyone walk through
 // other people's shipments by adding one.
 const newTrackingCode = (): string => {
-    for (;;) {
-        const bytes = randomBytes(CODE_LENGTH);
-        const code = [...bytes].map((byte) => CODE_ALPHABET[byte % 32]).join("");
-
-        if (!shipmentIdByTrackingCode.has(code)) {
-            return `FM-${code}`;
-        }
-    }
+    const code = [...randomBytes(CODE_LENGTH)].map((byte) => CODE_ALPHABET[byte % 32]).join("");
+    return `FM-${code}`;
 };
 
 const canSee = (actor: ShipmentActor, shipment: Shipment): boolean => {
@@ -55,8 +51,14 @@ const canSee = (actor: ShipmentActor, shipment: Shipment): boolean => {
     return actor.carrierId !== undefined && shipment.carrierId === actor.carrierId;
 };
 
-const findVisibleShipment = (actor: ShipmentActor, shipmentId: string): Shipment => {
-    const shipment = shipmentsById.get(shipmentId);
+const scopeOf = (actor: ShipmentActor): Scope => {
+    if (actor.role === "CLIENT") return {clientId: actor.userId};
+    if (actor.role === "MANAGER") return {carrierId: actor.carrierId ?? "00000000-0000-0000-0000-000000000000"};
+    return {};
+};
+
+const findVisibleShipment = async (actor: ShipmentActor, shipmentId: string): Promise<Shipment> => {
+    const shipment = await repos().shipments.findById(shipmentId);
 
     if (!shipment || !canSee(actor, shipment)) {
         throw new NotFoundError("Shipment not found");
@@ -65,15 +67,25 @@ const findVisibleShipment = (actor: ShipmentActor, shipmentId: string): Shipment
     return shipment;
 };
 
-const store = (shipment: Shipment): Shipment => {
-    shipmentsById.set(shipment.shipmentId, shipment);
-    shipmentIdByTrackingCode.set(shipment.trackingCode, shipment.shipmentId);
+// 32^8 codes make a clash vanishingly rare, but the storage's unique rule has
+// the final word: on a clash, draw again rather than check-then-insert.
+const store = async (draft: Omit<Shipment, "trackingCode">): Promise<Shipment> => {
+    for (let attempt = 1; ; attempt += 1) {
+        const shipment: Shipment = {...draft, trackingCode: newTrackingCode()};
 
-    if (shipment.rfqId !== undefined) {
-        shipmentIdByRfqId.set(shipment.rfqId, shipment.shipmentId);
+        try {
+            await repos().shipments.insert(shipment);
+            return shipment;
+        } catch (error) {
+            if (error instanceof DuplicateError && error.field === "rfqId") {
+                throw new ConflictError("This RFQ has already been booked");
+            }
+
+            if (!(error instanceof DuplicateError && error.field === "trackingCode") || attempt >= CODE_ATTEMPTS) {
+                throw error;
+            }
+        }
     }
-
-    return shipment;
 };
 
 const confirmed = (actor: ShipmentActor, now: Date) => ({
@@ -85,29 +97,28 @@ const confirmed = (actor: ShipmentActor, now: Date) => ({
 
 // The price is recomputed here, never taken from the request: the client says
 // which offer it wants, the server says what that offer costs right now.
-const bookInstant = (actor: ShipmentActor, input: BookInstantInput, now: Date): Shipment => {
-    const offer = findQuotes({
-        fromRegionId: input.fromRegionId,
-        toRegionId: input.toRegionId,
-        weightKg: input.weightKg,
-        volumeM3: input.volumeM3,
-        cargoCategory: input.cargoCategory,
-        transportType: input.transportType,
-    }).find((quote) => quote.carrierId === input.carrierId);
+const bookInstant = async (actor: ShipmentActor, input: BookInstantInput, now: Date): Promise<Shipment> => {
+    const offer = (
+        await findQuotes({
+            fromRegionId: input.fromRegionId,
+            toRegionId: input.toRegionId,
+            weightKg: input.weightKg,
+            volumeM3: input.volumeM3,
+            cargoCategory: input.cargoCategory,
+            transportType: input.transportType,
+        })
+    ).find((quote) => quote.carrierId === input.carrierId);
 
     if (!offer) {
         throw new BadRequestError("This carrier has no offer for this shipment");
     }
 
     if (offer.pricingMode !== "INSTANT" || offer.priceCents === undefined) {
-        throw new BadRequestError(
-            `${input.cargoCategory} cargo has no bookable price; file an RFQ instead`,
-        );
+        throw new BadRequestError(`${input.cargoCategory} cargo has no bookable price; file an RFQ instead`);
     }
 
     return store({
         shipmentId: randomUUID(),
-        trackingCode: newTrackingCode(),
         source: "INSTANT",
         clientId: actor.userId,
         carrierId: offer.carrierId,
@@ -124,16 +135,12 @@ const bookInstant = (actor: ShipmentActor, input: BookInstantInput, now: Date): 
     });
 };
 
-const bookFromRfq = (actor: ShipmentActor, input: BookFromRfqInput, now: Date): Shipment => {
+const bookFromRfq = async (actor: ShipmentActor, input: BookFromRfqInput, now: Date): Promise<Shipment> => {
     // getRfq applies the RFQ's own visibility: only its client gets this far.
-    const rfq = getRfq(actor, input.rfqId, now);
+    const rfq = await getRfq(actor, input.rfqId, now);
 
     if (rfq.status !== "ACCEPTED") {
         throw new ConflictError(`RFQ is ${rfq.status}; only an ACCEPTED RFQ can be booked`);
-    }
-
-    if (shipmentIdByRfqId.has(rfq.rfqId)) {
-        throw new ConflictError("This RFQ has already been booked");
     }
 
     const quote = rfq.quotes.find((q) => q.quoteId === rfq.acceptedQuoteId);
@@ -142,9 +149,9 @@ const bookFromRfq = (actor: ShipmentActor, input: BookFromRfqInput, now: Date): 
         throw new ConflictError("Accepted quote is missing");
     }
 
+    // "Booked once" is the storage's unique rule on rfqId, not a lookup here.
     return store({
         shipmentId: randomUUID(),
-        trackingCode: newTrackingCode(),
         source: "RFQ",
         rfqId: rfq.rfqId,
         clientId: actor.userId,
@@ -163,42 +170,35 @@ const bookFromRfq = (actor: ShipmentActor, input: BookFromRfqInput, now: Date): 
     });
 };
 
-export const bookShipment = (
+export const bookShipment = async (
     actor: ShipmentActor,
     input: BookShipmentInput,
     now: Date = new Date(),
-): Shipment => {
+): Promise<Shipment> => {
     if (actor.role !== "CLIENT") {
         throw new ForbiddenError("Only clients can book shipments");
     }
 
-    return input.source === "INSTANT"
-        ? bookInstant(actor, input, now)
-        : bookFromRfq(actor, input, now);
+    return input.source === "INSTANT" ? bookInstant(actor, input, now) : bookFromRfq(actor, input, now);
 };
 
-export const listShipments = (
-    actor: ShipmentActor,
-    filter: ListShipmentsFilter = {},
-): Shipment[] => {
-    return [...shipmentsById.values()]
-        .filter((shipment) => canSee(actor, shipment))
-        .filter((shipment) => filter.status === undefined || shipment.status === filter.status)
-        .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+export const listShipments = async (actor: ShipmentActor, filter: ListShipmentsFilter = {}): Promise<Shipment[]> => {
+    const shipments = await repos().shipments.list(scopeOf(actor));
+    return shipments.filter((shipment) => filter.status === undefined || shipment.status === filter.status);
 };
 
-export const getShipment = (actor: ShipmentActor, shipmentId: string): Shipment => {
+export const getShipment = (actor: ShipmentActor, shipmentId: string): Promise<Shipment> => {
     return findVisibleShipment(actor, shipmentId);
 };
 
-export const changeStatus = (
+export const changeStatus = async (
     actor: ShipmentActor,
     shipmentId: string,
     to: ShipmentStatus,
     note: string | undefined,
     now: Date = new Date(),
-): Shipment => {
-    const shipment = findVisibleShipment(actor, shipmentId);
+): Promise<Shipment> => {
+    const shipment = await findVisibleShipment(actor, shipmentId);
     const check = checkTransition(shipment.status, to, actor.role);
 
     if (!check.allowed) {
@@ -212,18 +212,14 @@ export const changeStatus = (
         status: to,
         history: [
             ...shipment.history,
-            {
-                status: to,
-                at: now.toISOString(),
-                byUserId: actor.userId,
-                byRole: actor.role,
-                ...(note !== undefined && {note}),
-            },
+            {status: to, at: now.toISOString(), byUserId: actor.userId, byRole: actor.role, ...(note !== undefined && {note})},
         ],
         updatedAt: now.toISOString(),
     };
 
-    shipmentsById.set(shipmentId, updated);
+    if (!(await repos().shipments.transition(updated, shipment.status))) {
+        throw new ConflictError("The shipment changed while you were updating it; reload and try again");
+    }
 
     return updated;
 };
@@ -233,9 +229,8 @@ export const changeStatus = (
  * where it is going and when it moved, never who sent it, what is inside or
  * what it cost; notes stay private too, as carriers write them for the client.
  */
-export const trackShipment = (trackingCode: string): PublicTracking => {
-    const shipmentId = shipmentIdByTrackingCode.get(trackingCode.toUpperCase());
-    const shipment = shipmentId === undefined ? undefined : shipmentsById.get(shipmentId);
+export const trackShipment = async (trackingCode: string): Promise<PublicTracking> => {
+    const shipment = await repos().shipments.findByTrackingCode(trackingCode.toUpperCase());
 
     if (!shipment) {
         throw new NotFoundError("No shipment with this tracking code");

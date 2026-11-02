@@ -9,12 +9,12 @@ import {successResponse} from "../utils";
 
 const HTTP_OK = 200;
 
-export const createQuotes = (req: Request, res: Response, next: NextFunction): void => {
+export const createQuotes = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const correlationId = randomUUID();
     res.locals.correlationId = correlationId;
 
     try {
-        const quotes = quoteService.findQuotes(req.body as QuoteRequest);
+        const quotes = await quoteService.findQuotes(req.body as QuoteRequest);
 
         res.status(HTTP_OK).json(successResponse(quotes, correlationId));
     } catch (error) {

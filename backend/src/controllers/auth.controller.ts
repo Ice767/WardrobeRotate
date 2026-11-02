@@ -71,7 +71,7 @@ export const logout = (_req: Request, res: Response): void => {
     res.status(HTTP_NO_CONTENT).send();
 };
 
-export const me = (req: Request, res: Response, next: NextFunction): void => {
+export const me = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const correlationId = randomUUID();
     res.locals.correlationId = correlationId;
 
@@ -82,7 +82,7 @@ export const me = (req: Request, res: Response, next: NextFunction): void => {
 
         // Read from the store rather than the token: role or company may have
         // changed since it was issued.
-        const user = authService.getUserById(req.user.sub);
+        const user = await authService.getUserById(req.user.sub);
 
         res.status(HTTP_OK).json(successResponse(user, correlationId));
     } catch (error) {

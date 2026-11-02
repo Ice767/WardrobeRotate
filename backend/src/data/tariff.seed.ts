@@ -1,4 +1,5 @@
 import type {TransportType} from "../contracts/transport.contract";
+import {repos} from "../repositories";
 import {insertTariff} from "../services/tariff.service";
 import {stableId} from "../utils/stable-id";
 import {carrierIdBySlug, regionIdBySlug} from "./reference.seed";
@@ -34,9 +35,22 @@ const TARIFF_SEEDS: TariffSeed[] = [
 
 // Goes through insertTariff, the same integrity check the API uses, so a seed
 // naming a carrier that does not run that transport type aborts startup.
-export const seedTariffs = (): void => {
+// A lane that already exists is left alone: with a database, every restart
+// would otherwise hit the unique rule, and a manager may have repriced it.
+export const seedTariffs = async (): Promise<void> => {
     for (const seed of TARIFF_SEEDS) {
-        insertTariff({
+        const lane = {
+            carrierId: carrierIdBySlug(seed.carrier),
+            fromRegionId: regionIdBySlug(seed.from),
+            toRegionId: regionIdBySlug(seed.to),
+            transportType: seed.transportType,
+        };
+
+        if (await repos().tariffs.findByLane(lane)) {
+            continue;
+        }
+
+        await insertTariff({
             tariffId: stableId(`tariff:${seed.carrier}:${seed.from}:${seed.to}:${seed.transportType}`),
             carrierId: carrierIdBySlug(seed.carrier),
             fromRegionId: regionIdBySlug(seed.from),

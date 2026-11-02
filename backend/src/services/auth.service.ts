@@ -7,8 +7,8 @@ import type {
     StoredUser,
     UserRole,
 } from "../contracts/auth.contract";
-import {usersByEmail, usersById} from "../data/store";
 import {BadRequestError, ConflictError, UnauthorizedError} from "../errors/app.error";
+import {DuplicateError, repos} from "../repositories";
 import {carrierExists} from "./carrier.service";
 import {comparePassword, hashPassword} from "./password.service";
 
@@ -27,35 +27,35 @@ const toPublicUser = (user: StoredUser): PublicUser => {
 
 const normalizeEmail = (email: string): string => email.trim().toLowerCase();
 
-export const registerUser = async (
-    input: RegisterUserRequestBody,
-): Promise<PublicUser> => {
-    const email = normalizeEmail(input.email);
-
-    if (usersByEmail.has(email)) {
-        throw new ConflictError("A user with this email already exists");
+// No "does this email exist?" read beforehand: the storage's unique rule is the
+// check, so two sign-ups racing on one address cannot both get through.
+const insertUser = async (user: StoredUser): Promise<PublicUser> => {
+    try {
+        await repos().users.insert(user);
+    } catch (error) {
+        if (error instanceof DuplicateError) {
+            throw new ConflictError("A user with this email already exists");
+        }
+        throw error;
     }
 
-    const user: StoredUser = {
+    return toPublicUser(user);
+};
+
+export const registerUser = async (input: RegisterUserRequestBody): Promise<PublicUser> => {
+    return insertUser({
         userId: randomUUID(),
-        email,
+        email: normalizeEmail(input.email),
         name: input.name,
         role: "CLIENT",
         ...(input.companyName !== undefined && {companyName: input.companyName}),
         passwordHash: await hashPassword(input.password),
         createdAt: new Date().toISOString(),
-    };
-
-    usersById.set(user.userId, user);
-    usersByEmail.set(user.email, user);
-
-    return toPublicUser(user);
+    });
 };
 
-export const loginUser = async (
-    input: LoginUserRequestBody,
-): Promise<PublicUser> => {
-    const user = usersByEmail.get(normalizeEmail(input.email));
+export const loginUser = async (input: LoginUserRequestBody): Promise<PublicUser> => {
+    const user = await repos().users.findByEmail(normalizeEmail(input.email));
 
     // The same message for "no such user" and "wrong password": otherwise the
     // endpoint becomes a way to probe which emails are registered.
@@ -66,14 +66,19 @@ export const loginUser = async (
     return toPublicUser(user);
 };
 
-export const getUserById = (userId: string): PublicUser => {
-    const user = usersById.get(userId);
+export const getUserById = async (userId: string): Promise<PublicUser> => {
+    const user = await repos().users.findById(userId);
 
     if (!user) {
         throw new UnauthorizedError("Unauthorized");
     }
 
     return toPublicUser(user);
+};
+
+export const findUserByEmail = async (email: string): Promise<PublicUser | undefined> => {
+    const user = await repos().users.findByEmail(normalizeEmail(email));
+    return user ? toPublicUser(user) : undefined;
 };
 
 export const createUserWithRole = async (input: {
@@ -84,12 +89,6 @@ export const createUserWithRole = async (input: {
     companyName?: string;
     carrierId?: string;
 }): Promise<PublicUser> => {
-    const email = normalizeEmail(input.email);
-
-    if (usersByEmail.has(email)) {
-        throw new ConflictError("A user with this email already exists");
-    }
-
     // Referential integrity, checked here because this is the only door through
     // which a user gets a carrier: a manager bound to a carrier that does not
     // exist would pass every later permission check and manage nothing.
@@ -97,19 +96,14 @@ export const createUserWithRole = async (input: {
         throw new BadRequestError("Unknown carrierId");
     }
 
-    const user: StoredUser = {
+    return insertUser({
         userId: randomUUID(),
-        email,
+        email: normalizeEmail(input.email),
         name: input.name,
         role: input.role,
         ...(input.companyName !== undefined && {companyName: input.companyName}),
         ...(input.carrierId !== undefined && {carrierId: input.carrierId}),
         passwordHash: await hashPassword(input.password),
         createdAt: new Date().toISOString(),
-    };
-
-    usersById.set(user.userId, user);
-    usersByEmail.set(user.email, user);
-
-    return toPublicUser(user);
+    });
 };

@@ -4,9 +4,12 @@ import type {Tariff} from "../contracts/tariff.contract";
 import {TRANSPORT_TYPE_SPECS, type TransportType} from "../contracts/transport.contract";
 import {carriersById, regionsById} from "../data/store";
 import {BadRequestError} from "../errors/app.error";
+import {repos} from "../repositories";
 import {calculatePrice} from "./price.calculator";
 import {getRegionPath} from "./region.service";
-import {findTariffForLane} from "./tariff.service";
+
+const laneKeyOf = (carrierId: string, fromRegionId: string, toRegionId: string, transportType: TransportType): string =>
+    [carrierId, fromRegionId, toRegionId, transportType].join("|");
 
 // Region chains reversed to run from the region itself up to its country:
 // [Tel Aviv, Tel Aviv District, Israel].
@@ -23,6 +26,7 @@ const chainUpward = (regionId: string): string[] => {
  * priced Tel Aviv -> Chicago specifically meant that price for that trip.
  */
 const findMostSpecificTariff = (
+    byLane: Map<string, Tariff>,
     carrierId: string,
     transportType: TransportType,
     fromChain: string[],
@@ -39,7 +43,7 @@ const findMostSpecificTariff = (
                 continue;
             }
 
-            const tariff = findTariffForLane({carrierId, fromRegionId, toRegionId, transportType});
+            const tariff = byLane.get(laneKeyOf(carrierId, fromRegionId, toRegionId, transportType));
 
             if (tariff) {
                 return tariff;
@@ -54,7 +58,7 @@ const priceOf = (quote: Quote): number => {
     return quote.priceCents ?? quote.priceRangeCents?.min ?? 0;
 };
 
-export const findQuotes = (request: QuoteRequest): Quote[] => {
+export const findQuotes = async (request: QuoteRequest): Promise<Quote[]> => {
     if (!regionsById.has(request.fromRegionId)) {
         throw new BadRequestError("Unknown fromRegionId");
     }
@@ -65,6 +69,12 @@ export const findQuotes = (request: QuoteRequest): Quote[] => {
 
     const fromChain = chainUpward(request.fromRegionId);
     const toChain = chainUpward(request.toRegionId);
+
+    // One read for the whole search: every tariff whose ends lie on the two
+    // chains. Picking the narrowest per carrier then happens in memory, instead
+    // of a database round trip per candidate lane.
+    const candidates = await repos().tariffs.listBetween(fromChain, toChain);
+    const byLane = new Map(candidates.map((t) => [laneKeyOf(t.carrierId, t.fromRegionId, t.toRegionId, t.transportType), t]));
     const category = CARGO_CATEGORY_SPECS[request.cargoCategory];
     const quotes: Quote[] = [];
 
@@ -84,7 +94,7 @@ export const findQuotes = (request: QuoteRequest): Quote[] => {
                 continue;
             }
 
-            const tariff = findMostSpecificTariff(carrier.carrierId, transportType, fromChain, toChain);
+            const tariff = findMostSpecificTariff(byLane, carrier.carrierId, transportType, fromChain, toChain);
 
             if (!tariff) {
                 continue;

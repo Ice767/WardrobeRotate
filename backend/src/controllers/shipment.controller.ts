@@ -23,13 +23,13 @@ const actorOf = (req: Request): ShipmentActor => {
     };
 };
 
-const handle = (status: number, run: (req: Request, res: Response) => unknown) => {
-    return (req: Request, res: Response, next: NextFunction): void => {
+const handle = (status: number, run: (req: Request, res: Response) => Promise<unknown>) => {
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         const correlationId = randomUUID();
         res.locals.correlationId = correlationId;
 
         try {
-            res.status(status).json(successResponse(run(req, res), correlationId));
+            res.status(status).json(successResponse(await run(req, res), correlationId));
         } catch (error) {
             next(error);
         }

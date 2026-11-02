@@ -1,18 +1,20 @@
-import {createUserWithRole} from "../services/auth.service";
+import {repos} from "../repositories";
+import {createUserWithRole, findUserByEmail} from "../services/auth.service";
 import {seedReferenceData} from "./reference.seed";
-import {usersByEmail} from "./store";
 import {seedTariffs} from "./tariff.seed";
 
 const ADMIN_EMAIL = "admin@logistics.dev";
 
-// The in-memory store is empty on every start, and the first admin cannot be
-// created through the API — registration always issues CLIENT. So it happens
-// here. In production a migration does this and the password comes from env.
+// Runs on every boot and is safe to: tables are created only if missing, and
+// seeds skip what is already there. The first admin cannot come through the
+// API — registration always issues CLIENT — so it is created here, with the
+// password from the environment outside local development.
 export const seedDemoData = async (): Promise<void> => {
+    await repos().init();
     seedReferenceData();
-    seedTariffs();
+    await seedTariffs();
 
-    if (usersByEmail.has(ADMIN_EMAIL)) {
+    if (await findUserByEmail(ADMIN_EMAIL)) {
         return;
     }
 

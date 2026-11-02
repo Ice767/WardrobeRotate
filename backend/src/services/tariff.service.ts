@@ -8,13 +8,14 @@ import type {
     UpdateTariffInput,
 } from "../contracts/tariff.contract";
 import type {TransportType} from "../contracts/transport.contract";
-import {carriersById, regionsById, tariffIdByLane, tariffsById} from "../data/store";
+import {carriersById, regionsById} from "../data/store";
 import {
     BadRequestError,
     ConflictError,
     ForbiddenError,
     NotFoundError,
 } from "../errors/app.error";
+import {DuplicateError, repos} from "../repositories";
 
 export interface ListTariffsFilter {
     carrierId?: string;
@@ -22,10 +23,6 @@ export interface ListTariffsFilter {
     toRegionId?: string;
     transportType?: TransportType;
 }
-
-const laneKeyOf = (lane: TariffLaneKey): string => {
-    return [lane.carrierId, lane.fromRegionId, lane.toRegionId, lane.transportType].join("|");
-};
 
 // A manager acts for exactly one carrier, taken from their token, never from
 // the request. Naming a different carrier is refused outright rather than
@@ -52,8 +49,8 @@ const resolveCarrierId = (actor: TariffActor, requested: string | undefined): st
 
 // A competitor's tariff answers 404, not 403: a 403 would confirm that the
 // lane exists, which is itself commercial information.
-const findVisibleTariff = (actor: TariffActor, tariffId: string): Tariff => {
-    const tariff = tariffsById.get(tariffId);
+const findVisibleTariff = async (actor: TariffActor, tariffId: string): Promise<Tariff> => {
+    const tariff = await repos().tariffs.findById(tariffId);
 
     if (!tariff || (actor.role === "MANAGER" && tariff.carrierId !== actor.carrierId)) {
         throw new NotFoundError("Tariff not found");
@@ -62,6 +59,8 @@ const findVisibleTariff = (actor: TariffActor, tariffId: string): Tariff => {
     return tariff;
 };
 
+// Carriers and regions are reference data in code, so these checks stay in the
+// service. Uniqueness of the lane is the storage's job, enforced on insert.
 const assertLaneIsValid = (lane: TariffLaneKey): void => {
     const carrier = carriersById.get(lane.carrierId);
 
@@ -70,9 +69,7 @@ const assertLaneIsValid = (lane: TariffLaneKey): void => {
     }
 
     if (!carrier.supportedTransportTypes.includes(lane.transportType)) {
-        throw new BadRequestError(
-            `Carrier ${carrier.name} does not operate ${lane.transportType}`,
-        );
+        throw new BadRequestError(`Carrier ${carrier.name} does not operate ${lane.transportType}`);
     }
 
     if (!regionsById.has(lane.fromRegionId)) {
@@ -82,47 +79,35 @@ const assertLaneIsValid = (lane: TariffLaneKey): void => {
     if (!regionsById.has(lane.toRegionId)) {
         throw new BadRequestError("Unknown toRegionId");
     }
-
-    if (tariffIdByLane.has(laneKeyOf(lane))) {
-        throw new ConflictError("A tariff for this lane already exists");
-    }
-};
-
-/** Exact-lane lookup for pricing. No actor: quotes read every carrier's matrix. */
-export const findTariffForLane = (lane: TariffLaneKey): Tariff | undefined => {
-    const tariffId = tariffIdByLane.get(laneKeyOf(lane));
-
-    return tariffId === undefined ? undefined : tariffsById.get(tariffId);
 };
 
 /** Integrity-checked insert, shared by the API and the seed. */
-export const insertTariff = (tariff: Tariff): Tariff => {
+export const insertTariff = async (tariff: Tariff): Promise<Tariff> => {
     assertLaneIsValid(tariff);
 
-    tariffsById.set(tariff.tariffId, tariff);
-    tariffIdByLane.set(laneKeyOf(tariff), tariff.tariffId);
+    try {
+        await repos().tariffs.insert(tariff);
+    } catch (error) {
+        if (error instanceof DuplicateError) {
+            throw new ConflictError("A tariff for this lane already exists");
+        }
+        throw error;
+    }
 
     return tariff;
 };
 
-export const listTariffs = (actor: TariffActor, filter: ListTariffsFilter = {}): Tariff[] => {
+export const listTariffs = async (actor: TariffActor, filter: ListTariffsFilter = {}): Promise<Tariff[]> => {
     const carrierId = actor.role === "MANAGER" ? actor.carrierId : filter.carrierId;
 
-    return [...tariffsById.values()].filter((tariff) => {
-        return (
-            (carrierId === undefined || tariff.carrierId === carrierId) &&
-            (filter.fromRegionId === undefined || tariff.fromRegionId === filter.fromRegionId) &&
-            (filter.toRegionId === undefined || tariff.toRegionId === filter.toRegionId) &&
-            (filter.transportType === undefined || tariff.transportType === filter.transportType)
-        );
-    });
+    return repos().tariffs.list({...filter, carrierId});
 };
 
-export const getTariff = (actor: TariffActor, tariffId: string): Tariff => {
+export const getTariff = (actor: TariffActor, tariffId: string): Promise<Tariff> => {
     return findVisibleTariff(actor, tariffId);
 };
 
-export const createTariff = (actor: TariffActor, input: CreateTariffInput): Tariff => {
+export const createTariff = (actor: TariffActor, input: CreateTariffInput): Promise<Tariff> => {
     return insertTariff({
         tariffId: randomUUID(),
         carrierId: resolveCarrierId(actor, input.carrierId),
@@ -139,30 +124,26 @@ export const createTariff = (actor: TariffActor, input: CreateTariffInput): Tari
 // Only prices and transit time are editable. The lane is the tariff's identity:
 // moving it would really be deleting one tariff and creating another, and doing
 // that in place would let an update slip past the one-per-lane check.
-export const updateTariff = (
+export const updateTariff = async (
     actor: TariffActor,
     tariffId: string,
     patch: UpdateTariffInput,
-): Tariff => {
-    const current = findVisibleTariff(actor, tariffId);
+): Promise<Tariff> => {
+    const current = await findVisibleTariff(actor, tariffId);
     const updated: Tariff = {...current, ...patch};
 
     // The validator sees only the patch; whether both rates end up at zero is
     // knowable only after merging it with what is stored.
     if (updated.pricePerKgCents === 0 && updated.pricePerM3Cents === 0) {
-        throw new BadRequestError(
-            "At least one of pricePerKgCents or pricePerM3Cents must stay positive",
-        );
+        throw new BadRequestError("At least one of pricePerKgCents or pricePerM3Cents must stay positive");
     }
 
-    tariffsById.set(tariffId, updated);
+    await repos().tariffs.updatePrices(tariffId, updated);
 
     return updated;
 };
 
-export const deleteTariff = (actor: TariffActor, tariffId: string): void => {
-    const tariff = findVisibleTariff(actor, tariffId);
-
-    tariffsById.delete(tariffId);
-    tariffIdByLane.delete(laneKeyOf(tariff));
+export const deleteTariff = async (actor: TariffActor, tariffId: string): Promise<void> => {
+    await findVisibleTariff(actor, tariffId);
+    await repos().tariffs.delete(tariffId);
 };
