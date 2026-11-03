@@ -1,6 +1,6 @@
 {
   // Must match the Worker's name in the Cloudflare dashboard.
-  "name": "wardroberotate",
+  "name": "cargoa",
   "main": "worker.js",
   "compatibility_date": "2026-10-01",
   "assets": {
