@@ -11,7 +11,7 @@ prices a shipment against them.
 **Status:** the client journey works end to end — price a shipment, request
 firm prices for special cargo, accept a quote, book, track. Carriers have a
 complete API but no screens yet. Data lives in process memory, so this is not
-yet deployable beyond a single demo server; see [docs/deploy-aws.md](docs/deploy-aws.md).
+yet deployable beyond a single demo server; see [docs/deploy-free.md](docs/deploy-free.md) (Cloudflare Pages + Render + Neon, free) or [docs/deploy-aws.md](docs/deploy-aws.md).
 
 ## Quick start
 
@@ -31,8 +31,8 @@ npm run dev          # http://localhost:5173, proxies /api to the backend
 The server seeds itself on every boot and refuses to start if seeding fails.
 Seeded admin: `admin@logistics.dev` / `AdminPass123!` in development. With
 `NODE_ENV=production` there is no default: the server refuses to start until
-`SEED_ADMIN_PASSWORD` is set. All data lives in
-process memory and is gone on restart.
+`SEED_ADMIN_PASSWORD` is set. With `DATABASE_URL` set, data is kept in Postgres;
+without it, it lives in process memory and is gone on restart.
 
 ```bash
 cd backend && npm test     # tsc + node --test
@@ -148,8 +148,7 @@ matching lane wins, even when a broader one is cheaper.
 - No refresh token — one JWT access token in an httpOnly cookie, 1 day TTL.
 - No password reset by email.
 - No generated OpenAPI/Swagger documentation.
-- No persistent database yet; [docs/deploy-aws.md](docs/deploy-aws.md) covers
-  what has to change before production.
+- No migration tool: the schema is created at startup, fine until a table has to change.
 - No carrier or admin screens; their API is complete.
 - No email or SMS notifications.
 
@@ -165,3 +164,5 @@ matching lane wins, even when a broader one is cheaper.
 | `JWT_ACCESS_TTL` | `1d` | also determines the cookie's lifetime |
 | `SEED_ADMIN_PASSWORD` | `AdminPass123!` outside production | password for the seeded admin; required in production |
 | `TRUST_PROXY` | unset | number of reverse proxies in front of the API; set it there, or the sign-in rate limit sees one address for everyone. Never set it when clients reach the API directly |
+| `PROXY_SECRET` | unset | shared with the Cloudflare Pages proxy; when set, every `/api` request except `/api/health` must carry it in `X-Proxy-Secret` |
+| `DATABASE_URL` | unset | Postgres connection string; without it data stays in process memory |

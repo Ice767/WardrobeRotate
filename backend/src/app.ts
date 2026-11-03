@@ -4,6 +4,7 @@ import express from "express";
 
 import {corsOptions} from "./config/cors.config";
 import {errorHandler} from "./middlewares/error.middleware";
+import {requireProxySecret} from "./middlewares/proxy.middleware";
 import authRouter from "./routes/auth.routes";
 import quoteRouter from "./routes/quote.routes";
 import referenceRouter from "./routes/reference.routes";
@@ -34,6 +35,9 @@ app.get("/api/health", (_req, res) => {
         timestamp: new Date().toISOString(),
     });
 });
+
+// After the health check, which Render calls directly without the secret.
+app.use(requireProxySecret(process.env.PROXY_SECRET));
 
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);

@@ -1,0 +1,33 @@
+# Render Blueprint for the backend. The frontend is on Cloudflare Pages and
+# reaches this service through its /api proxy function, never directly.
+services:
+  - type: web
+    name: freight-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      # Generated once by Render and kept between deploys.
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      # Two proxies stand in front of the app: the Pages function and Render's
+      # own. Only with exactly 2 does the rate limit see the real client address.
+      - key: TRUST_PROXY
+        value: "2"
+      # Filled in by hand in the dashboard; sync: false keeps them out of git.
+      - key: DATABASE_URL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # Same value as PROXY_SECRET in the Cloudflare Pages project.
+      - key: PROXY_SECRET
+        sync: false
