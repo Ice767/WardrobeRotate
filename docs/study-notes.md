@@ -37,4 +37,7 @@ names the file to read.
 - **What a Worker with static assets is** and why the proxy keeps the cookie first-party.
   `docs/deploy-free.md`
 - **`npm ci` vs `npm install`.** `backend/Dockerfile`
+- **Why `NODE_ENV=production` skips devDependencies in `npm ci`**, and why the Render
+  build needs `--include=dev` (build and runtime share one environment). `render.yaml`
+- **`sslmode=require` vs `verify-full`** in the Postgres connection string.
 - **Connection pool size vs Neon limits.** `backend/src/repositories/postgres.ts`
