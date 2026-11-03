@@ -4,7 +4,7 @@
 // Render. The browser only ever talks to the site's own origin, so the auth
 // cookie stays first-party and SameSite=Lax keeps working.
 //
-// API_ORIGIN and PROXY_SECRET are set in the Worker's dashboard settings.
+// API_ORIGIN comes from wrangler.jsonc; PROXY_SECRET is a Worker secret.
 
 const forwardToApi = (request, env) => {
     const incoming = new URL(request.url);

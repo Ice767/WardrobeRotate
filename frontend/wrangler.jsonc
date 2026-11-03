@@ -11,7 +11,11 @@
     // Only API calls run the Worker; everything else is a static file.
     "run_worker_first": ["/api/*"]
   },
-  // API_ORIGIN and PROXY_SECRET live in the dashboard; keep them on every deploy.
+  // The backend address is public, so it lives here. PROXY_SECRET is set with
+  // `npx wrangler secret put PROXY_SECRET`; keep_vars keeps it on every deploy.
+  "vars": {
+    "API_ORIGIN": "https://freight-api-7dby.onrender.com"
+  },
   "keep_vars": true,
   // Matches the dashboard so a deploy does not switch logging off.
   "observability": {
