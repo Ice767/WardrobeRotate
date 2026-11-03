@@ -12,5 +12,19 @@
     "run_worker_first": ["/api/*"]
   },
   // API_ORIGIN and PROXY_SECRET live in the dashboard; keep them on every deploy.
-  "keep_vars": true
+  "keep_vars": true,
+  // Matches the dashboard so a deploy does not switch logging off.
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+      "persist": true
+    },
+    "traces": {
+      "enabled": false,
+      "head_sampling_rate": 1,
+      "persist": true
+    }
+  }
 }
