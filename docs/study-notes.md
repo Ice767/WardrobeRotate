@@ -14,7 +14,7 @@ names the file to read.
 - **X-Forwarded-For and `trust proxy`**: how Express picks the client IP from the
   right end of the list, why `TRUST_PROXY=2`, and how a forged header is defeated
   by the proxy overwriting it and by `PROXY_SECRET`. `backend/src/app.ts`,
-  `frontend/functions/api/[[path]].js`, `backend/src/middlewares/proxy.middleware.ts`
+  `frontend/worker.js`, `backend/src/middlewares/proxy.middleware.ts`
 - **`timingSafeEqual` and why the values are hashed first.** `backend/src/middlewares/proxy.middleware.ts`
 - **Rate limiting that counts only failures** (`skipSuccessfulRequests`) and why the
   limiter runs before validation. `backend/src/middlewares/rate-limit.middleware.ts`
@@ -34,7 +34,7 @@ names the file to read.
 
 ## Deployment
 
-- **What a Pages Function is** and why the proxy keeps the cookie first-party.
+- **What a Worker with static assets is** and why the proxy keeps the cookie first-party.
   `docs/deploy-free.md`
 - **`npm ci` vs `npm install`.** `backend/Dockerfile`
 - **Connection pool size vs Neon limits.** `backend/src/repositories/postgres.ts`

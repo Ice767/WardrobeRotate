@@ -1,5 +1,5 @@
-# Render Blueprint for the backend. The frontend is on Cloudflare Pages and
-# reaches this service through its /api proxy function, never directly.
+# Render Blueprint for the backend. The frontend is a Cloudflare Worker and
+# reaches this service through its /api proxy, never directly.
 services:
   - type: web
     name: freight-api
@@ -17,7 +17,7 @@ services:
       # Generated once by Render and kept between deploys.
       - key: JWT_ACCESS_SECRET
         generateValue: true
-      # Two proxies stand in front of the app: the Pages function and Render's
+      # Two proxies stand in front of the app: the Cloudflare Worker and Render's
       # own. Only with exactly 2 does the rate limit see the real client address.
       - key: TRUST_PROXY
         value: "2"
@@ -28,6 +28,6 @@ services:
         sync: false
       - key: ALLOWED_ORIGINS
         sync: false
-      # Same value as PROXY_SECRET in the Cloudflare Pages project.
+      # Same value as PROXY_SECRET in the Cloudflare Worker settings.
       - key: PROXY_SECRET
         sync: false

@@ -11,7 +11,7 @@ prices a shipment against them.
 **Status:** the client journey works end to end — price a shipment, request
 firm prices for special cargo, accept a quote, book, track. Carriers have a
 complete API but no screens yet. Data lives in process memory, so this is not
-yet deployable beyond a single demo server; see [docs/deploy-free.md](docs/deploy-free.md) (Cloudflare Pages + Render + Neon, free) or [docs/deploy-aws.md](docs/deploy-aws.md).
+yet deployable beyond a single demo server; see [docs/deploy-free.md](docs/deploy-free.md) (Cloudflare Workers + Render + Neon, free) or [docs/deploy-aws.md](docs/deploy-aws.md).
 
 ## Quick start
 
@@ -164,5 +164,5 @@ matching lane wins, even when a broader one is cheaper.
 | `JWT_ACCESS_TTL` | `1d` | also determines the cookie's lifetime |
 | `SEED_ADMIN_PASSWORD` | `AdminPass123!` outside production | password for the seeded admin; required in production |
 | `TRUST_PROXY` | unset | number of reverse proxies in front of the API; set it there, or the sign-in rate limit sees one address for everyone. Never set it when clients reach the API directly |
-| `PROXY_SECRET` | unset | shared with the Cloudflare Pages proxy; when set, every `/api` request except `/api/health` must carry it in `X-Proxy-Secret` |
+| `PROXY_SECRET` | unset | shared with the Cloudflare Worker proxy; when set, every `/api` request except `/api/health` must carry it in `X-Proxy-Secret` |
 | `DATABASE_URL` | unset | Postgres connection string; without it data stays in process memory |

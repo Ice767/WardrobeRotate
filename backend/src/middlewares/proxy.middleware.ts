@@ -6,9 +6,9 @@ import {ForbiddenError} from "../errors/app.error";
 
 const digest = (value: string): Buffer => createHash("sha256").update(value).digest();
 
-// In production the API sits behind the Cloudflare Pages function, but its own
+// In production the API sits behind the Cloudflare Worker, but its own
 // address is public too. A request sent there directly could carry a forged
-// X-Forwarded-For and dodge the sign-in rate limit. The function adds a shared
+// X-Forwarded-For and dodge the sign-in rate limit. The Worker adds a shared
 // secret; anything without it did not come through the proxy and is refused.
 // Unset PROXY_SECRET (local development) turns the check off.
 export const requireProxySecret = (secret: string | undefined): RequestHandler => {
