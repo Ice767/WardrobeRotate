@@ -6,6 +6,7 @@ import {sessionUser} from "../lib/session";
 import {colors} from "../theme";
 import {consoleAccess} from "./access";
 import {ConsoleNav} from "./ConsoleNav";
+import {ConsoleSearch} from "./ConsoleSearch";
 import {requestState} from "./requests";
 
 const Centered = ({children}: {children: React.ReactNode}) => (
@@ -87,6 +88,9 @@ export const ConsoleLayout = () => {
                 ]}
             />
             <Box component="main" sx={{minWidth: 0, px: {xs: 2, sm: 4}, py: 3, bgcolor: colors.cream}}>
+                <Box sx={{mb: 3}}>
+                    <ConsoleSearch />
+                </Box>
                 <Outlet />
             </Box>
         </Box>
