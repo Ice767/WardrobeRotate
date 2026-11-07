@@ -122,3 +122,32 @@ export interface Rfq {
     expiresAt: string;
     quotes: RfqQuote[];
 }
+
+/** A carrier's price for one lane, money in integer cents. */
+export interface Tariff {
+    tariffId: string;
+    carrierId: string;
+    fromRegionId: string;
+    toRegionId: string;
+    transportType: TransportType;
+    pricePerKgCents: number;
+    pricePerM3Cents: number;
+    /** Floor for small shipments: the carrier never moves anything for less. */
+    minChargeCents: number;
+    transitDays: number;
+}
+
+/** The server takes the carrier from the signed-in manager. */
+export type CreateTariffBody = Omit<Tariff, "tariffId" | "carrierId">;
+
+/** The lane itself cannot change; only prices and transit time can. */
+export type UpdateTariffBody = Partial<Pick<Tariff, "pricePerKgCents" | "pricePerM3Cents" | "minChargeCents" | "transitDays">>;
+
+export interface SubmitRfqQuoteBody {
+    transportType: TransportType;
+    priceCents: number;
+    transitDays: number;
+    /** ISO date-time. */
+    validUntil: string;
+    comment?: string;
+}

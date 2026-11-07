@@ -5,6 +5,7 @@ import {errorText, useBookInstantMutation} from "../api/api";
 import type {Quote, QuoteRequest} from "../api/types";
 import {describeBasis, formatCents, formatDays, formatRange} from "../lib/format";
 import {colors, fonts} from "../theme";
+import {Pill} from "./Pill";
 
 interface Props {
     quote: Quote;
@@ -13,24 +14,11 @@ interface Props {
     highlight?: "Cheapest" | "Fastest";
     signedIn: boolean;
     categoryTag?: string;
+    /** Position in the list, for the staggered entrance. */
+    index: number;
 }
 
-const Tag = ({children, tone = "neutral"}: {children: string; tone?: "neutral" | "instant" | "accent" | "request"}) => {
-    const tones = {
-        neutral: {border: `1px solid ${colors.field}`, color: colors.muted, background: "transparent"},
-        instant: {border: "1px solid transparent", color: colors.instant, background: colors.instantSoft},
-        accent: {border: "1px solid transparent", color: colors.accent, background: colors.accentSoft},
-        request: {border: "1px solid transparent", color: colors.request, background: colors.requestSoft},
-    };
-
-    return (
-        <Box component="span" sx={{fontFamily: fonts.small, fontSize: 11, px: 0.75, py: 0.25, borderRadius: "4px", ...tones[tone]}}>
-            {children}
-        </Box>
-    );
-};
-
-export const OfferCard = ({quote, request, laneLabel, highlight, signedIn, categoryTag}: Props) => {
+export const OfferCard = ({quote, request, laneLabel, highlight, signedIn, categoryTag, index}: Props) => {
     const [book, {data: shipment, error, isLoading}] = useBookInstantMutation();
     const basis = describeBasis(quote, request.volumeM3);
 
@@ -40,18 +28,23 @@ export const OfferCard = ({quote, request, laneLabel, highlight, signedIn, categ
         ) : quote.priceRangeCents ? (
             formatRange(quote.priceRangeCents)
         ) : (
-            <Box component="span" sx={{color: colors.muted}}>Price on request</Box>
+            <Box component="span" sx={{color: colors.muted, fontFamily: fonts.body, fontSize: 16, fontWeight: 500}}>Price on request</Box>
         );
 
     return (
-        <Paper component="article" sx={{p: {xs: 2, sm: 2.5}, display: "flex", flexDirection: "column", gap: 1.5}}>
+        <Paper
+            component="article"
+            className="stagger card-hover"
+            style={{animationDelay: `${index * 60}ms`}}
+            sx={{p: {xs: 2, sm: 2.5}, display: "flex", flexDirection: "column", gap: 1.5}}
+        >
             <Box sx={{display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: "12px 24px", alignItems: "center"}}>
                 <Box sx={{display: "flex", flexDirection: "column", gap: 0.75, minWidth: 0}}>
-                    <Box sx={{display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.25}}>
+                    <Box sx={{display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1}}>
                         <Typography component="h3" sx={{fontWeight: 600, fontSize: 17}}>{quote.carrierName}</Typography>
-                        <Tag>{quote.transportType}</Tag>
-                        {categoryTag && <Tag tone={quote.pricingMode === "ON_REQUEST" ? "request" : "accent"}>{categoryTag}</Tag>}
-                        {highlight && <Tag tone={highlight === "Cheapest" ? "instant" : "accent"}>{highlight}</Tag>}
+                        <Pill>{quote.transportType}</Pill>
+                        {categoryTag && <Pill tone={quote.pricingMode === "ON_REQUEST" ? "alert" : "info"}>{categoryTag}</Pill>}
+                        {highlight && <Pill tone={highlight === "Cheapest" ? "done" : "info"}>{highlight}</Pill>}
                     </Box>
                     <Typography variant="body2" color="text.secondary">
                         {formatDays(quote.transitDays)} · {laneLabel}
@@ -60,7 +53,7 @@ export const OfferCard = ({quote, request, laneLabel, highlight, signedIn, categ
                 </Box>
 
                 <Box sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1}}>
-                    <Typography component="p" sx={{fontFamily: fonts.display, fontWeight: 700, fontSize: {xs: 28, sm: 34}, lineHeight: 1, textAlign: "right"}}>
+                    <Typography component="p" sx={{fontFamily: fonts.mono, fontWeight: 500, fontSize: {xs: 22, sm: 26}, lineHeight: 1.1, textAlign: "right"}}>
                         {price}
                     </Typography>
                     {quote.pricingMode === "INSTANT" && !shipment && (
@@ -78,7 +71,7 @@ export const OfferCard = ({quote, request, laneLabel, highlight, signedIn, categ
             </Box>
 
             {shipment && (
-                <Alert severity="success">
+                <Alert severity="success" className="enter">
                     Booked at {formatCents(shipment.priceCents)}. Tracking code{" "}
                     <RouterLink to={`/track/${shipment.trackingCode}`} style={{fontFamily: fonts.mono, fontWeight: 600}}>
                         {shipment.trackingCode}

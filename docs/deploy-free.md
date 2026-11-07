@@ -26,6 +26,7 @@ Tables are created by the backend itself on first start.
 | --- | --- |
 | `DATABASE_URL` | the Neon string from step 1 |
 | `SEED_ADMIN_PASSWORD` | a long random password, keep it in a password manager |
+| `SEED_MANAGER_PASSWORD` | optional: password for the demo carrier `manager@aerofreight.dev` |
 | `ALLOWED_ORIGINS` | `https://<name>.<account>.workers.dev` (fill in after step 3) |
 | `PROXY_SECRET` | a long random string, e.g. `openssl rand -hex 32`; the same goes into Cloudflare |
 
@@ -63,6 +64,7 @@ Check: open the site, search a quote, sign in as `admin@logistics.dev`.
 | `JWT_ACCESS_SECRET` | Render only | git, Cloudflare |
 | `DATABASE_URL` | Render only | git, the frontend |
 | `SEED_ADMIN_PASSWORD` | Render + your password manager | git |
+| `SEED_MANAGER_PASSWORD` | Render + your password manager | git |
 | `PROXY_SECRET` | Render and Cloudflare (same value) | git |
 
 To rotate one: change it in the dashboard, redeploy. Changing `JWT_ACCESS_SECRET`
