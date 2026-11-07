@@ -66,6 +66,12 @@ button:focus-visible {
     animation: bump 0.5s ease;
 }
 
+/* Chart bars rise from their base; set animationDelay inline for a stagger. */
+.bar-grow {
+    transform-origin: bottom;
+    animation: grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
 .track-fill {
     transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -128,6 +134,15 @@ button:focus-visible {
     }
     100% {
         transform: scale(1);
+    }
+}
+
+@keyframes grow {
+    from {
+        transform: scaleY(0);
+    }
+    to {
+        transform: scaleY(1);
     }
 }
 
