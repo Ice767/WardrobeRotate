@@ -56,6 +56,11 @@ export const theme = createTheme({
         button: {textTransform: "none", fontWeight: 600},
     },
     components: {
+        // Reserves the scrollbar's width on every page, so a page tall enough to
+        // scroll does not sit further left than a short one.
+        MuiCssBaseline: {styleOverrides: {html: {scrollbarGutter: "stable"}}},
+        // The scroll lock pads the body by that same width, shifting it twice.
+        MuiPopover: {defaultProps: {disableScrollLock: true}},
         MuiButton: {
             defaultProps: {disableElevation: true, className: "btn-lift"},
             styleOverrides: {root: {minHeight: 44, paddingInline: 18, borderRadius: 8}},

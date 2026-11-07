@@ -6,7 +6,7 @@ import {colors} from "../theme";
 
 const navStyle = ({isActive}: {isActive: boolean}) => ({
     color: isActive ? colors.navy : colors.muted,
-    fontWeight: isActive ? 600 : 500,
+    fontWeight: 500,
     textDecoration: "none",
     borderBottom: isActive ? `2px solid ${colors.red}` : "2px solid transparent",
     borderRadius: 4,

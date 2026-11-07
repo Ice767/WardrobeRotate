@@ -39,6 +39,8 @@ names the file to read.
 - **Why `StyledEngineProvider injectFirst` is needed**: two CSS rules of equal weight are
   decided by their order in the page, so MUI has to load before `motion.css`.
   `frontend/src/main.tsx`
+- **Why a scrollbar moves centered content**, how `scrollbar-gutter: stable` prevents it,
+  and why the MUI scroll lock then has to be switched off. `frontend/src/theme.ts`
 
 ## Deployment
 
