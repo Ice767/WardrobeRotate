@@ -6,7 +6,7 @@ import {
     errorText,
     useCargoCategoriesQuery,
     useCreateRfqMutation,
-    useMeQuery,
+    useCurrentUser,
     useQuotesMutation,
     useRegionsQuery,
 } from "../api/api";
@@ -32,7 +32,7 @@ const Section = ({children}: {children: string}) => (
 export const QuotePage = () => {
     const {data: regions = [], isLoading: regionsLoading, isError: regionsFailed, refetch: reloadRegions} = useRegionsQuery();
     const {data: categories = []} = useCargoCategoriesQuery();
-    const {data: me} = useMeQuery();
+    const me = useCurrentUser();
     // A fixed cache key keeps the last results alive while the client goes off
     // to sign in, and the request itself is kept in the store beside them, so
     // "Sign in to book" brings them back to the same offers.

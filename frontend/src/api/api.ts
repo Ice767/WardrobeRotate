@@ -1,5 +1,6 @@
 import {createApi, fetchBaseQuery} from "@reduxjs/toolkit/query/react";
 
+import {sessionUser} from "../lib/session";
 import type {
     CargoCategorySpec,
     Carrier,
@@ -102,6 +103,12 @@ export const {
     useCreateRfqMutation,
     useAcceptRfqQuoteMutation,
 } = api;
+
+/** Who is signed in right now, as opposed to who was at the last good check. */
+export const useCurrentUser = (): PublicUser | undefined => {
+    const {data, error} = useMeQuery();
+    return sessionUser(data, error);
+};
 
 /** The backend's own error text, or a fallback for network failures. */
 export const errorText = (error: unknown): string => {
