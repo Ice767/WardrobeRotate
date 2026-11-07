@@ -27,6 +27,8 @@ services:
         sync: false
       - key: SEED_ADMIN_PASSWORD
         sync: false
+      - key: SEED_MANAGER_PASSWORD
+        sync: false
       - key: ALLOWED_ORIGINS
         sync: false
       # Same value as PROXY_SECRET in the Cloudflare Worker settings.
