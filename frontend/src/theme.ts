@@ -1,59 +1,68 @@
 import {createTheme} from "@mui/material/styles";
 
 export const fonts = {
-    display: "'Barlow Condensed', 'Arial Narrow', sans-serif",
-    body: "'IBM Plex Sans', system-ui, sans-serif",
-    small: "'Saira', 'Arial Narrow', sans-serif",
-    mono: "'IBM Plex Mono', ui-monospace, Consolas, monospace",
+    body: "'Inter', system-ui, sans-serif",
+    mono: "'JetBrains Mono', ui-monospace, Consolas, monospace",
+    // Old names, kept until the client pages are restyled.
+    display: "'Inter', system-ui, sans-serif",
+    small: "'Inter', system-ui, sans-serif",
 };
+
+const red = "#E63946";
+const cream = "#F1FAEE";
+const navy = "#1D3557";
+const aqua = "#A8DADC";
+const line = "#e5e7eb";
 
 export const colors = {
-    ground: "#eef1f4",
+    red,
+    cream,
+    navy,
+    aqua,
     surface: "#ffffff",
-    ink: "#17212b",
-    muted: "#55616d",
-    rule: "#d3dae1",
-    field: "#b8c3cd",
-    accent: "#1d5a8c",
-    accentSoft: "#e2edf6",
-    instant: "#1f5c34",
-    instantSoft: "#e1f1e6",
-    request: "#8a5300",
-    requestSoft: "#fbefd9",
+    line,
+    muted: "#4a5d78",
+    ink: navy,
+    // Old names, kept until the client pages are restyled.
+    ground: cream,
+    rule: line,
+    field: "#cfd6df",
+    accent: navy,
+    accentSoft: "rgba(168, 218, 220, 0.35)",
+    instant: navy,
+    instantSoft: aqua,
+    request: red,
+    requestSoft: "rgba(230, 57, 70, 0.1)",
 };
 
-// Radii follow the design canvas: 8 for cards, 6 for controls, 4 for tags.
+// Radii follow the mockup: 10 for cards, 8 for controls.
 export const theme = createTheme({
     palette: {
-        primary: {main: colors.accent},
-        warning: {main: colors.request},
-        success: {main: colors.instant},
-        background: {default: colors.ground, paper: colors.surface},
-        text: {primary: colors.ink, secondary: colors.muted},
-        divider: colors.rule,
+        primary: {main: red},
+        background: {default: cream, paper: colors.surface},
+        text: {primary: navy, secondary: colors.muted},
+        divider: line,
     },
-    shape: {borderRadius: 6},
+    shape: {borderRadius: 8},
     typography: {
         fontFamily: fonts.body,
         fontSize: 15,
-        h1: {fontFamily: fonts.display, fontWeight: 700, fontSize: "2.75rem", lineHeight: 1},
-        h2: {fontFamily: fonts.display, fontWeight: 600, fontSize: "1.65rem", lineHeight: 1.1},
-        h3: {fontFamily: fonts.display, fontWeight: 700, fontSize: "2.1rem", lineHeight: 1},
-        body2: {fontFamily: fonts.small, fontSize: "0.82rem"},
-        caption: {fontFamily: fonts.small, fontSize: "0.75rem"},
-        overline: {fontFamily: fonts.small, fontSize: "0.7rem", letterSpacing: "0.08em", lineHeight: 1.6},
+        h1: {fontWeight: 600, fontSize: "1.75rem", lineHeight: 1.2},
+        h2: {fontWeight: 600, fontSize: "1.25rem", lineHeight: 1.3},
+        h3: {fontWeight: 600, fontSize: "1.5rem", lineHeight: 1.25},
+        body2: {fontSize: "0.82rem"},
+        caption: {fontSize: "0.75rem"},
+        overline: {fontSize: "0.7rem", fontWeight: 500, letterSpacing: "0.08em", lineHeight: 1.6},
         button: {textTransform: "none", fontWeight: 600},
     },
     components: {
         MuiButton: {
-            defaultProps: {disableElevation: true},
-            styleOverrides: {root: {minHeight: 44, paddingInline: 18}},
+            defaultProps: {disableElevation: true, className: "btn-lift"},
+            styleOverrides: {root: {minHeight: 44, paddingInline: 18, borderRadius: 8}},
         },
         MuiPaper: {
             defaultProps: {elevation: 0, variant: "outlined"},
-            styleOverrides: {root: {borderRadius: 8, borderColor: colors.rule}},
+            styleOverrides: {root: {borderRadius: 10, borderColor: line}},
         },
-        MuiInputLabel: {styleOverrides: {root: {fontFamily: fonts.small}}},
-        MuiFormHelperText: {styleOverrides: {root: {fontFamily: fonts.small}}},
     },
 });

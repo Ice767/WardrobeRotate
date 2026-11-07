@@ -1,19 +1,21 @@
 import {Box, Button, Link, Typography} from "@mui/material";
 import {Link as RouterLink, NavLink, useNavigate} from "react-router-dom";
 
-import {useLogoutMutation, useMeQuery} from "../api/api";
-import {colors, fonts} from "../theme";
+import {useCurrentUser, useLogoutMutation} from "../api/api";
+import {colors} from "../theme";
 
 const navStyle = ({isActive}: {isActive: boolean}) => ({
-    color: isActive ? colors.surface : "#c3ced8",
+    color: isActive ? colors.navy : colors.muted,
+    fontWeight: isActive ? 600 : 500,
     textDecoration: "none",
-    borderBottom: isActive ? "2px solid #78b2e4" : "2px solid transparent",
-    paddingBottom: 2,
+    borderBottom: isActive ? `2px solid ${colors.red}` : "2px solid transparent",
+    borderRadius: 4,
+    padding: "2px 6px",
     fontSize: 14,
 });
 
 export const Header = () => {
-    const {data: me} = useMeQuery();
+    const me = useCurrentUser();
     const [logout] = useLogoutMutation();
     const navigate = useNavigate();
 
@@ -23,13 +25,13 @@ export const Header = () => {
     };
 
     return (
-        <Box component="header" sx={{bgcolor: colors.ink, color: colors.ground}}>
+        <Box component="header" sx={{bgcolor: colors.surface, color: colors.navy, borderBottom: `1px solid ${colors.line}`}}>
             <Box
                 sx={{
                     maxWidth: 1200,
                     mx: "auto",
                     px: {xs: 2, sm: 4},
-                    py: 1.75,
+                    py: 1.25,
                     display: "flex",
                     flexWrap: "wrap",
                     alignItems: "center",
@@ -37,27 +39,46 @@ export const Header = () => {
                     gap: 2,
                 }}
             >
-                <Link component={RouterLink} to="/" underline="none" sx={{color: "inherit", display: "flex", alignItems: "baseline", gap: 1.5}}>
-                    <Typography component="span" sx={{fontFamily: fonts.display, fontWeight: 700, fontSize: 26, letterSpacing: "0.02em"}}>
-                        FREIGHT MARKET
-                    </Typography>
-                    <Typography component="span" variant="caption" sx={{color: "#9fb0bf", display: {xs: "none", sm: "inline"}}}>
-                        US · IL · RU lanes
+                <Link component={RouterLink} to="/" underline="none" sx={{color: "inherit", display: "flex", alignItems: "center", gap: 1.25}}>
+                    <Box
+                        component="span"
+                        aria-hidden="true"
+                        className="logo-breathe"
+                        sx={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: "7px",
+                            bgcolor: colors.red,
+                            color: colors.surface,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontWeight: 700,
+                        }}
+                    >
+                        C
+                    </Box>
+                    <Typography component="span" sx={{fontWeight: 700, fontSize: 17}}>
+                        Cargoa
                     </Typography>
                 </Link>
 
-                <Box component="nav" sx={{display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2.5}}>
-                    <NavLink to="/" end style={navStyle}>Get a quote</NavLink>
-                    <NavLink to="/track" style={navStyle}>Track a shipment</NavLink>
+                <Box component="nav" sx={{display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1.5}}>
+                    <NavLink to="/" end className="nav-nudge" style={navStyle}>Get a quote</NavLink>
+                    <NavLink to="/track" className="nav-nudge" style={navStyle}>Track a shipment</NavLink>
                     {me ? (
                         <>
-                            <NavLink to="/account" style={navStyle}>My shipments</NavLink>
-                            <Button onClick={signOut} size="small" sx={{color: "#c3ced8", minHeight: 32, px: 1}}>
+                            {me.role === "MANAGER" ? (
+                                <NavLink to="/console" className="nav-nudge" style={navStyle}>Console</NavLink>
+                            ) : (
+                                <NavLink to="/account" className="nav-nudge" style={navStyle}>My shipments</NavLink>
+                            )}
+                            <Button onClick={signOut} size="small" color="inherit" sx={{color: colors.muted, minHeight: 32, px: 1}}>
                                 Sign out
                             </Button>
                         </>
                     ) : (
-                        <NavLink to="/signin" style={navStyle}>Sign in</NavLink>
+                        <NavLink to="/signin" className="nav-nudge" style={navStyle}>Sign in</NavLink>
                     )}
                 </Box>
             </Box>

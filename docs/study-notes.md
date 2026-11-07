@@ -32,6 +32,14 @@ names the file to read.
   `backend/src/repositories/repositories.contract.test.ts`
 - **Money in integer cents, one `Math.ceil` at the end.** `backend/src/services/price.calculator.ts`
 
+## Frontend
+
+- **Why RTK Query keeps old `data` after a failed refetch**, and why only a 401 clears
+  the signed-in user while a 502 does not. `frontend/src/lib/session.ts`
+- **Why `StyledEngineProvider injectFirst` is needed**: two CSS rules of equal weight are
+  decided by their order in the page, so MUI has to load before `motion.css`.
+  `frontend/src/main.tsx`
+
 ## Deployment
 
 - **What a Worker with static assets is** and why the proxy keeps the cookie first-party.

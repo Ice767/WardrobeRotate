@@ -1,0 +1,174 @@
+/*
+ * Motion shared by every page, with timings from the approved mockup.
+ * Page and hover motion stays within 0.7 s. The toast, the row flash and the
+ * pulse last longer on purpose: they report a state and delay nothing.
+ */
+
+a:focus-visible,
+button:focus-visible {
+    outline: 2px solid #e63946;
+    outline-offset: 2px;
+}
+
+.enter {
+    animation: enter 0.26s ease both;
+}
+
+/* Set the step inline: style={{animationDelay: `${index * 60}ms`}}. */
+.stagger {
+    animation: rise 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(17, 24, 39, 0.08);
+    border-color: #cfd6df;
+}
+
+.btn-lift {
+    transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, transform 0.08s ease;
+}
+
+.btn-lift:hover {
+    transform: translateY(-1px);
+}
+
+.btn-lift.MuiButton-contained:hover {
+    box-shadow: 0 6px 14px rgba(230, 57, 70, 0.28);
+}
+
+.btn-lift:active {
+    transform: scale(0.97);
+}
+
+.nav-nudge {
+    transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+.nav-nudge:hover {
+    background-color: rgba(168, 218, 220, 0.35);
+    transform: translateX(2px);
+}
+
+.row-flash {
+    animation: flash 1.6s ease both;
+}
+
+.pulse {
+    animation: pulse 1.8s ease-in-out infinite;
+}
+
+.bump {
+    animation: bump 0.5s ease;
+}
+
+.track-fill {
+    transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.toast-in {
+    animation: toast 2.6s ease both;
+}
+
+.logo-breathe {
+    animation: breathe 4s ease-in-out infinite;
+}
+
+@keyframes enter {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes rise {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes flash {
+    0% {
+        background: rgba(168, 218, 220, 0.7);
+    }
+    100% {
+        background: transparent;
+    }
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.35;
+    }
+}
+
+@keyframes bump {
+    0% {
+        transform: scale(1);
+    }
+    40% {
+        transform: scale(1.35);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes toast {
+    0% {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    10%,
+    85% {
+        opacity: 1;
+        transform: none;
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+}
+
+@keyframes breathe {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(230, 57, 70, 0);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(230, 57, 70, 0.12);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .card-hover:hover,
+    .btn-lift:hover,
+    .btn-lift:active,
+    .nav-nudge:hover {
+        transform: none;
+    }
+}
