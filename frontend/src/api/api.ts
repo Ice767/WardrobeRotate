@@ -4,6 +4,7 @@ import {sessionUser} from "../lib/session";
 import type {
     CargoCategorySpec,
     Carrier,
+    CreateTariffBody,
     Envelope,
     PublicUser,
     Quote,
@@ -11,8 +12,12 @@ import type {
     Region,
     Rfq,
     Shipment,
+    ShipmentStatus,
+    SubmitRfqQuoteBody,
+    Tariff,
     Tracking,
     TransportType,
+    UpdateTariffBody,
 } from "./types";
 
 // Every backend response is wrapped in an envelope; screens only want `data`.
@@ -20,10 +25,10 @@ const unwrap = <T,>(response: Envelope<T>): T => response.data;
 
 export const api = createApi({
     reducerPath: "api",
-    // Same-origin "/api": Vite proxies it in dev and Amplify rewrites it in
-    // production, so the auth cookie stays first-party in both.
+    // Same-origin "/api": Vite proxies it in dev and the Cloudflare Worker proxies
+    // it in production, so the auth cookie stays first-party in both.
     baseQuery: fetchBaseQuery({baseUrl: "/api", credentials: "include"}),
-    tagTypes: ["Me", "Shipments", "Rfqs"],
+    tagTypes: ["Me", "Shipments", "Rfqs", "Tariffs"],
     endpoints: (build) => ({
         regions: build.query<Region[], void>({query: () => "/regions", transformResponse: unwrap<Region[]>}),
         carriers: build.query<Carrier[], void>({query: () => "/carriers", transformResponse: unwrap<Carrier[]>}),
@@ -40,16 +45,16 @@ export const api = createApi({
         login: build.mutation<PublicUser, {email: string; password: string}>({
             query: (body) => ({url: "/auth/login", method: "POST", body}),
             transformResponse: unwrap<PublicUser>,
-            invalidatesTags: ["Me", "Shipments", "Rfqs"],
+            invalidatesTags: ["Me", "Shipments", "Rfqs", "Tariffs"],
         }),
         register: build.mutation<PublicUser, {email: string; password: string; name: string; companyName?: string}>({
             query: (body) => ({url: "/auth/register", method: "POST", body}),
             transformResponse: unwrap<PublicUser>,
-            invalidatesTags: ["Me", "Shipments", "Rfqs"],
+            invalidatesTags: ["Me", "Shipments", "Rfqs", "Tariffs"],
         }),
         logout: build.mutation<void, void>({
             query: () => ({url: "/auth/logout", method: "POST"}),
-            invalidatesTags: ["Me", "Shipments", "Rfqs"],
+            invalidatesTags: ["Me", "Shipments", "Rfqs", "Tariffs"],
         }),
 
         shipments: build.query<Shipment[], void>({
@@ -83,6 +88,34 @@ export const api = createApi({
             transformResponse: unwrap<Rfq>,
             invalidatesTags: ["Rfqs"],
         }),
+
+        // Carrier console. The server scopes every call to the manager's carrier.
+        submitRfqQuote: build.mutation<Rfq, {rfqId: string; body: SubmitRfqQuoteBody}>({
+            query: ({rfqId, body}) => ({url: `/rfqs/${rfqId}/quotes`, method: "POST", body}),
+            transformResponse: unwrap<Rfq>,
+            invalidatesTags: ["Rfqs"],
+        }),
+        changeShipmentStatus: build.mutation<Shipment, {shipmentId: string; status: ShipmentStatus}>({
+            query: ({shipmentId, status}) => ({url: `/shipments/${shipmentId}/status`, method: "POST", body: {status}}),
+            transformResponse: unwrap<Shipment>,
+            invalidatesTags: ["Shipments"],
+        }),
+        tariffs: build.query<Tariff[], void>({query: () => "/tariffs", transformResponse: unwrap<Tariff[]>, providesTags: ["Tariffs"]}),
+        createTariff: build.mutation<Tariff, CreateTariffBody>({
+            query: (body) => ({url: "/tariffs", method: "POST", body}),
+            transformResponse: unwrap<Tariff>,
+            invalidatesTags: ["Tariffs"],
+        }),
+        updateTariff: build.mutation<Tariff, {tariffId: string; body: UpdateTariffBody}>({
+            query: ({tariffId, body}) => ({url: `/tariffs/${tariffId}`, method: "PATCH", body}),
+            transformResponse: unwrap<Tariff>,
+            invalidatesTags: ["Tariffs"],
+        }),
+        // 204 with no body, so there is nothing to unwrap.
+        deleteTariff: build.mutation<void, string>({
+            query: (tariffId) => ({url: `/tariffs/${tariffId}`, method: "DELETE"}),
+            invalidatesTags: ["Tariffs"],
+        }),
     }),
 });
 
@@ -102,6 +135,12 @@ export const {
     useRfqsQuery,
     useCreateRfqMutation,
     useAcceptRfqQuoteMutation,
+    useSubmitRfqQuoteMutation,
+    useChangeShipmentStatusMutation,
+    useTariffsQuery,
+    useCreateTariffMutation,
+    useUpdateTariffMutation,
+    useDeleteTariffMutation,
 } = api;
 
 /** Who is signed in right now, as opposed to who was at the last good check. */
