@@ -39,5 +39,8 @@ names the file to read.
 - **`npm ci` vs `npm install`.** `backend/Dockerfile`
 - **Why `NODE_ENV=production` skips devDependencies in `npm ci`**, and why the Render
   build needs `--include=dev` (build and runtime share one environment). `render.yaml`
+- **Why a sleeping Render backend looks like "no cities"**, why only GET is retried
+  (a repeated POST could book twice), and how the cron keeps it awake within the
+  750 free hours a month. `frontend/worker.js`, `frontend/wrangler.jsonc`
 - **`sslmode=require` vs `verify-full`** in the Postgres connection string.
 - **Connection pool size vs Neon limits.** `backend/src/repositories/postgres.ts`

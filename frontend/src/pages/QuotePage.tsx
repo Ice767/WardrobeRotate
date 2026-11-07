@@ -30,7 +30,7 @@ const Section = ({children}: {children: string}) => (
 );
 
 export const QuotePage = () => {
-    const {data: regions = []} = useRegionsQuery();
+    const {data: regions = [], isLoading: regionsLoading, isError: regionsFailed, refetch: reloadRegions} = useRegionsQuery();
     const {data: categories = []} = useCargoCategoriesQuery();
     const {data: me} = useMeQuery();
     // A fixed cache key keeps the last results alive while the client goes off
@@ -96,9 +96,14 @@ export const QuotePage = () => {
             <Box sx={{display: "flex", flexWrap: "wrap", gap: 3, alignItems: "flex-start"}}>
                 <Paper component="form" noValidate onSubmit={submit} sx={{flex: "1 1 320px", minWidth: 0, p: 2.5, display: "flex", flexDirection: "column", gap: 2}}>
                     <Section>Route</Section>
-                    <RegionPicker id="from" label="From" regions={regions} value={fromValue} onChange={setFrom} exclude={toValue?.regionId} />
+                    {regionsFailed && (
+                        <Alert severity="error" action={<Button color="inherit" size="small" onClick={() => reloadRegions()}>Try again</Button>}>
+                            The list of cities could not be loaded.
+                        </Alert>
+                    )}
+                    <RegionPicker id="from" label="From" regions={regions} value={fromValue} onChange={setFrom} exclude={toValue?.regionId} loading={regionsLoading} />
                     {touched && problems.from && <Typography variant="caption" color="error">{problems.from}</Typography>}
-                    <RegionPicker id="to" label="To" regions={regions} value={toValue} onChange={setTo} exclude={fromValue?.regionId} />
+                    <RegionPicker id="to" label="To" regions={regions} value={toValue} onChange={setTo} exclude={fromValue?.regionId} loading={regionsLoading} />
                     {touched && problems.to && <Typography variant="caption" color="error">{problems.to}</Typography>}
 
                     <Section>Cargo</Section>
