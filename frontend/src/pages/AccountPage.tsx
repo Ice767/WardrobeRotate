@@ -181,17 +181,16 @@ export const AccountPage = () => {
         return null;
     }
 
+    // A carrier's work lives in the console; this page is the client's.
+    if (me.role === "MANAGER") {
+        return <Navigate to="/console" replace />;
+    }
+
     const bookedRfqIds = new Set(shipments.flatMap((s) => (s.rfqId ? [s.rfqId] : [])));
 
     return (
         <Box component="main" className="enter" sx={{maxWidth: 900, mx: "auto", px: {xs: 2, sm: 4}, py: 4, display: "flex", flexDirection: "column", gap: 3}}>
             <Typography variant="h1">Hello, {me.name}</Typography>
-
-            {me.role === "MANAGER" && (
-                <Alert severity="info" action={<Button component={RouterLink} to="/console" color="inherit" size="small">Open the console</Button>}>
-                    Tariffs, quote requests and shipments for your carrier are in the console.
-                </Alert>
-            )}
 
             <Box component="section" sx={{display: "flex", flexDirection: "column", gap: 1.5}}>
                 <Typography variant="h2">Quote requests</Typography>
