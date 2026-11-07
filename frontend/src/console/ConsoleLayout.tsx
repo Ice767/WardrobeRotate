@@ -8,6 +8,7 @@ import {consoleAccess} from "./access";
 import {ConsoleNav} from "./ConsoleNav";
 import {ConsoleSearch} from "./ConsoleSearch";
 import {requestState} from "./requests";
+import {ToastProvider} from "./toast";
 
 const Centered = ({children}: {children: React.ReactNode}) => (
     <Box component="main" className="enter" sx={{maxWidth: 560, mx: "auto", px: 2, py: 6}}>
@@ -91,7 +92,9 @@ export const ConsoleLayout = () => {
                 <Box sx={{mb: 3}}>
                     <ConsoleSearch />
                 </Box>
-                <Outlet />
+                <ToastProvider>
+                    <Outlet />
+                </ToastProvider>
             </Box>
         </Box>
     );
