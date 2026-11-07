@@ -1,4 +1,5 @@
 import {Alert, Box, Button, MenuItem, Paper, TextField, Typography} from "@mui/material";
+import {alpha} from "@mui/material/styles";
 import {useMemo, useState, type FormEvent} from "react";
 import {Link as RouterLink} from "react-router-dom";
 
@@ -14,6 +15,7 @@ import type {CargoCategory, QuoteRequest, Region} from "../api/types";
 import {OfferCard} from "../components/OfferCard";
 import {RegionPicker} from "../components/RegionPicker";
 import {pickHighlights} from "../lib/format";
+import {parseQuantity, volumeProblem, weightProblem} from "../lib/quoteLimits";
 import {searched, useAppDispatch, useAppSelector} from "../store";
 import {colors, fonts} from "../theme";
 
@@ -51,14 +53,14 @@ export const QuotePage = () => {
 
     const fromValue = from ?? (last ? byId.get(last.fromRegionId) ?? null : null);
     const toValue = to ?? (last ? byId.get(last.toRegionId) ?? null : null);
-    const weightKg = Number(weight);
-    const volumeM3 = Number(volume);
+    const weightKg = parseQuantity(weight);
+    const volumeM3 = parseQuantity(volume);
 
     const problems = {
         from: !fromValue ? "Choose where the cargo starts" : null,
         to: !toValue ? "Choose the destination" : null,
-        weight: !(weightKg > 0) ? "Enter the weight in kilograms" : null,
-        volume: !(volumeM3 > 0) ? "Enter the volume in cubic meters" : null,
+        weight: weightProblem(weight),
+        volume: volumeProblem(volume),
     };
     const valid = Object.values(problems).every((p) => p === null);
 
@@ -85,7 +87,7 @@ export const QuotePage = () => {
     const code = (id: string) => byId.get(id)?.code ?? "";
 
     return (
-        <Box component="main" sx={{maxWidth: 1200, mx: "auto", px: {xs: 2, sm: 4}, py: 4, display: "flex", flexDirection: "column", gap: 3}}>
+        <Box component="main" className="enter" sx={{maxWidth: 1200, mx: "auto", px: {xs: 2, sm: 4}, py: 4, display: "flex", flexDirection: "column", gap: 3}}>
             <Box sx={{display: "flex", flexDirection: "column", gap: 0.75}}>
                 <Typography variant="h1">Price a shipment</Typography>
                 <Typography color="text.secondary" sx={{maxWidth: "62ch"}}>
@@ -114,8 +116,7 @@ export const QuotePage = () => {
                             value={weight}
                             onChange={(e) => setWeight(e.target.value)}
                             error={touched && !!problems.weight}
-                            helperText={touched ? problems.weight : undefined}
-                            slotProps={{htmlInput: {inputMode: "decimal", style: {fontFamily: fonts.mono}}}}
+                            slotProps={{htmlInput: {inputMode: "decimal", "aria-describedby": "cargo-problems", style: {fontFamily: fonts.mono}}}}
                         />
                         <TextField
                             id="volume"
@@ -123,10 +124,16 @@ export const QuotePage = () => {
                             value={volume}
                             onChange={(e) => setVolume(e.target.value)}
                             error={touched && !!problems.volume}
-                            helperText={touched ? problems.volume : undefined}
-                            slotProps={{htmlInput: {inputMode: "decimal", style: {fontFamily: fonts.mono}}}}
+                            slotProps={{htmlInput: {inputMode: "decimal", "aria-describedby": "cargo-problems", style: {fontFamily: fonts.mono}}}}
                         />
                     </Box>
+                    {/* Under both fields, not inside one: the limit sentences are too long for half the form. */}
+                    {touched && (problems.weight || problems.volume) && (
+                        <Box id="cargo-problems" sx={{display: "flex", flexDirection: "column", gap: 0.5}}>
+                            {problems.weight && <Typography variant="caption" color="error">{problems.weight}</Typography>}
+                            {problems.volume && <Typography variant="caption" color="error">{problems.volume}</Typography>}
+                        </Box>
+                    )}
                     <TextField
                         id="category"
                         select
@@ -148,7 +155,7 @@ export const QuotePage = () => {
                     {result.error && <Alert severity="error">{errorText(result.error)}</Alert>}
 
                     {!request && !result.isLoading && (
-                        <Paper sx={{p: 3, borderStyle: "dashed", borderColor: colors.field}}>
+                        <Paper sx={{p: 3, borderStyle: "dashed"}}>
                             <Typography sx={{fontWeight: 600}}>Offers appear here</Typography>
                             <Typography variant="body2" color="text.secondary">
                                 Try Ashdod → Houston, 2000 kg, 20 m³ to compare sea and air.
@@ -163,7 +170,7 @@ export const QuotePage = () => {
                             </Typography>
 
                             {quotes.length === 0 && (
-                                <Paper sx={{p: 2.5, borderStyle: "dashed", borderColor: colors.field}}>
+                                <Paper className="enter" sx={{p: 2.5, borderStyle: "dashed"}}>
                                     <Typography sx={{fontWeight: 600}}>No carrier takes this shipment yet</Typography>
                                     <Typography variant="body2" color="text.secondary">
                                         No lane covers this route for this cargo, or it is over every mode's weight or volume limit. Try a nearby city, or split the load.
@@ -172,7 +179,7 @@ export const QuotePage = () => {
                             )}
 
                             {quotes.length > 0 && mode !== "INSTANT" && (
-                                <Paper sx={{p: 2.5, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 2, bgcolor: mode === "ON_REQUEST" ? colors.requestSoft : colors.accentSoft, borderColor: "transparent"}}>
+                                <Paper className="enter" sx={{p: 2.5, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 2, bgcolor: mode === "ON_REQUEST" ? alpha(colors.red, 0.08) : alpha(colors.aqua, 0.35), borderColor: "transparent"}}>
                                     <Box sx={{minWidth: 0, flex: "1 1 280px"}}>
                                         <Typography sx={{fontWeight: 600}}>
                                             {mode === "ON_REQUEST" ? "These carriers price this cargo on request" : "These prices are a range until the carrier confirms handling"}
@@ -188,7 +195,6 @@ export const QuotePage = () => {
                                     ) : me ? (
                                         <Button
                                             variant="contained"
-                                            color={mode === "ON_REQUEST" ? "warning" : "primary"}
                                             disabled={rfqResult.isLoading}
                                             onClick={() => requestRfq(request)}
                                         >
@@ -201,9 +207,11 @@ export const QuotePage = () => {
                             )}
                             {rfqResult.error && <Alert severity="error">{errorText(rfqResult.error)}</Alert>}
 
-                            {quotes.map((quote) => (
+                            {/* The search time in the key replays the entrance for every new search. */}
+                            {quotes.map((quote, index) => (
                                 <OfferCard
-                                    key={`${quote.carrierId}-${quote.transportType}`}
+                                    key={`${result.fulfilledTimeStamp}-${quote.carrierId}-${quote.transportType}`}
+                                    index={index}
                                     quote={quote}
                                     request={request}
                                     laneLabel={`${name(quote.matchedFromRegionId)} → ${name(quote.matchedToRegionId)} lane`}

@@ -32,7 +32,7 @@ export const SignInPage = () => {
     };
 
     return (
-        <Box component="main" sx={{maxWidth: 440, mx: "auto", px: 2, py: 5}}>
+        <Box component="main" className="enter" sx={{maxWidth: 440, mx: "auto", px: 2, py: 5}}>
             <Paper component="form" onSubmit={submit} sx={{p: 3, display: "flex", flexDirection: "column", gap: 2}}>
                 <Typography variant="h2" component="h1">{mode === "signin" ? "Sign in" : "Create an account"}</Typography>
                 <Tabs value={mode} onChange={(_e, value) => setMode(value)} aria-label="Sign in or create an account">

@@ -3,45 +3,26 @@ import {createTheme} from "@mui/material/styles";
 export const fonts = {
     body: "'Inter', system-ui, sans-serif",
     mono: "'JetBrains Mono', ui-monospace, Consolas, monospace",
-    // Old names, kept until the client pages are restyled.
-    display: "'Inter', system-ui, sans-serif",
-    small: "'Inter', system-ui, sans-serif",
 };
 
-const red = "#E63946";
-const cream = "#F1FAEE";
-const navy = "#1D3557";
-const aqua = "#A8DADC";
-const line = "#e5e7eb";
-
 export const colors = {
-    red,
-    cream,
-    navy,
-    aqua,
+    red: "#E63946",
+    cream: "#F1FAEE",
+    navy: "#1D3557",
+    aqua: "#A8DADC",
     surface: "#ffffff",
-    line,
+    line: "#e5e7eb",
     muted: "#4a5d78",
-    ink: navy,
-    // Old names, kept until the client pages are restyled.
-    ground: cream,
-    rule: line,
-    field: "#cfd6df",
-    accent: navy,
-    accentSoft: "rgba(168, 218, 220, 0.35)",
-    instant: navy,
-    instantSoft: aqua,
-    request: red,
-    requestSoft: "rgba(230, 57, 70, 0.1)",
+    ink: "#1D3557",
 };
 
 // Radii follow the mockup: 10 for cards, 8 for controls.
 export const theme = createTheme({
     palette: {
-        primary: {main: red},
-        background: {default: cream, paper: colors.surface},
-        text: {primary: navy, secondary: colors.muted},
-        divider: line,
+        primary: {main: colors.red},
+        background: {default: colors.cream, paper: colors.surface},
+        text: {primary: colors.ink, secondary: colors.muted},
+        divider: colors.line,
     },
     shape: {borderRadius: 8},
     typography: {
@@ -67,7 +48,7 @@ export const theme = createTheme({
         },
         MuiPaper: {
             defaultProps: {elevation: 0, variant: "outlined"},
-            styleOverrides: {root: {borderRadius: 10, borderColor: line}},
+            styleOverrides: {root: {borderRadius: 10, borderColor: colors.line}},
         },
     },
 });
