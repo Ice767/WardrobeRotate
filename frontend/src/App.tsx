@@ -4,6 +4,7 @@ import {Route, Routes} from "react-router-dom";
 import {Header} from "./components/Header";
 import {ConsoleLayout} from "./console/ConsoleLayout";
 import {ConsolePlaceholder} from "./console/ConsolePlaceholder";
+import {OverviewPage} from "./console/OverviewPage";
 import {SearchPage} from "./console/SearchPage";
 import {AccountPage} from "./pages/AccountPage";
 import {QuotePage} from "./pages/QuotePage";
@@ -20,7 +21,7 @@ export const App = () => (
             <Route path="/signin" element={<SignInPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="/console" element={<ConsoleLayout />}>
-                <Route index element={<ConsolePlaceholder title="Overview" />} />
+                <Route index element={<OverviewPage />} />
                 <Route path="tariffs" element={<ConsolePlaceholder title="Tariffs" />} />
                 <Route path="requests" element={<ConsolePlaceholder title="Quote requests" />} />
                 <Route path="shipments" element={<ConsolePlaceholder title="Shipments" />} />
