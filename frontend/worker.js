@@ -4,7 +4,15 @@
 // Render. The browser only ever talks to the site's own origin, so the auth
 // cookie stays first-party and SameSite=Lax keeps working.
 //
-// API_ORIGIN and PROXY_SECRET are set in the Worker's dashboard settings.
+// API_ORIGIN and PROXY_SECRET are Worker secrets (wrangler secret put).
+
+// Render's free plan puts the backend to sleep and answers 502/503 at once
+// until it is up again, usually within a minute.
+const WAKE_STATUSES = new Set([502, 503]);
+const WAKE_ATTEMPTS = 12;
+const WAKE_DELAY_MS = 5_000;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const forwardToApi = (request, env) => {
     const incoming = new URL(request.url);
@@ -29,6 +37,24 @@ const forwardToApi = (request, env) => {
     });
 };
 
+// Only reads are repeated: the backend might have done a POST before failing,
+// and sending it twice could book a shipment twice.
+const forwardWaitingForWake = async (request, env) => {
+    let response = await forwardToApi(request, env);
+
+    if (request.method !== "GET" && request.method !== "HEAD") {
+        return response;
+    }
+
+    for (let attempt = 1; attempt < WAKE_ATTEMPTS && WAKE_STATUSES.has(response.status); attempt += 1) {
+        await response.body?.cancel();
+        await sleep(WAKE_DELAY_MS);
+        response = await forwardToApi(request, env);
+    }
+
+    return response;
+};
+
 export default {
     async fetch(request, env) {
         if (new URL(request.url).pathname.startsWith("/api/")) {
@@ -36,9 +62,15 @@ export default {
                 return new Response("API_ORIGIN is not configured", {status: 500});
             }
 
-            return forwardToApi(request, env);
+            return forwardWaitingForWake(request, env);
         }
 
         return env.ASSETS.fetch(request);
+    },
+
+    // Runs on the cron in wrangler.jsonc. Render sleeps after 15 idle minutes,
+    // so a ping every 10 keeps the first visitor from waiting.
+    scheduled(_event, env, ctx) {
+        ctx.waitUntil(fetch(new URL("/api/health", env.API_ORIGIN)));
     },
 };

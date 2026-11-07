@@ -16,12 +16,13 @@ interface Props {
     value: Region | null;
     onChange: (region: Region | null) => void;
     exclude?: string;
+    loading?: boolean;
 }
 
 // Grouped by country and searchable by name or code, so typing "TLV" or
 // "Tel" both work. Districts and countries are offered too: a tariff may be
 // set at that level, and a shipper may not know the exact city yet.
-export const RegionPicker = ({id, label, regions, value, onChange, exclude}: Props) => {
+export const RegionPicker = ({id, label, regions, value, onChange, exclude, loading = false}: Props) => {
     const options = useMemo(() => {
         const byId = new Map(regions.map((r) => [r.regionId, r]));
 
@@ -37,6 +38,8 @@ export const RegionPicker = ({id, label, regions, value, onChange, exclude}: Pro
         <Autocomplete<Option>
             id={id}
             options={options}
+            loading={loading}
+            loadingText="Loading cities… this can take up to a minute"
             value={selected}
             onChange={(_event, option) => onChange(option?.region ?? null)}
             groupBy={(option) => option.country}
