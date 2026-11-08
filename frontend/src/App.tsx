@@ -6,6 +6,7 @@ import {ConsoleLayout} from "./console/ConsoleLayout";
 import {ConsolePlaceholder} from "./console/ConsolePlaceholder";
 import {OverviewPage} from "./console/OverviewPage";
 import {SearchPage} from "./console/SearchPage";
+import {TariffsPage} from "./console/TariffsPage";
 import {AccountPage} from "./pages/AccountPage";
 import {QuotePage} from "./pages/QuotePage";
 import {SignInPage} from "./pages/SignInPage";
@@ -22,7 +23,7 @@ export const App = () => (
             <Route path="/account" element={<AccountPage />} />
             <Route path="/console" element={<ConsoleLayout />}>
                 <Route index element={<OverviewPage />} />
-                <Route path="tariffs" element={<ConsolePlaceholder title="Tariffs" />} />
+                <Route path="tariffs" element={<TariffsPage />} />
                 <Route path="requests" element={<ConsolePlaceholder title="Quote requests" />} />
                 <Route path="shipments" element={<ConsolePlaceholder title="Shipments" />} />
                 <Route path="search" element={<SearchPage />} />

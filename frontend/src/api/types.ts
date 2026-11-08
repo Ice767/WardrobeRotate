@@ -29,6 +29,8 @@ export interface Region {
 export interface Carrier {
     carrierId: string;
     name: string;
+    /** The modes this carrier may publish tariffs and quotes for. */
+    supportedTransportTypes: TransportType[];
 }
 
 export interface CargoCategorySpec {
