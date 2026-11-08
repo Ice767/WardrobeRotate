@@ -35,4 +35,9 @@ describe("parseDollars", () => {
     it("rejects more than the server allows", () => {
         expect(parseDollars("100001")).toEqual({error: "That is more than $100 000"});
     });
+
+    it("takes a different ceiling when the caller has one", () => {
+        expect(parseDollars("150000", 10_000_000_000)).toEqual({cents: 15_000_000});
+        expect(parseDollars("100000001", 10_000_000_000)).toEqual({error: "That is more than $100 000 000"});
+    });
 });

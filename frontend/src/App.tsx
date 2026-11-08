@@ -5,6 +5,7 @@ import {Header} from "./components/Header";
 import {ConsoleLayout} from "./console/ConsoleLayout";
 import {ConsolePlaceholder} from "./console/ConsolePlaceholder";
 import {OverviewPage} from "./console/OverviewPage";
+import {RequestsPage} from "./console/RequestsPage";
 import {SearchPage} from "./console/SearchPage";
 import {TariffsPage} from "./console/TariffsPage";
 import {AccountPage} from "./pages/AccountPage";
@@ -24,7 +25,7 @@ export const App = () => (
             <Route path="/console" element={<ConsoleLayout />}>
                 <Route index element={<OverviewPage />} />
                 <Route path="tariffs" element={<TariffsPage />} />
-                <Route path="requests" element={<ConsolePlaceholder title="Quote requests" />} />
+                <Route path="requests" element={<RequestsPage />} />
                 <Route path="shipments" element={<ConsolePlaceholder title="Shipments" />} />
                 <Route path="search" element={<SearchPage />} />
             </Route>

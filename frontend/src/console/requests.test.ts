@@ -1,7 +1,7 @@
 import {describe, expect, it} from "vitest";
 
 import type {Rfq} from "../api/types";
-import {requestState} from "./requests";
+import {expiresIn, requestState} from "./requests";
 
 const rfq = (overrides: Partial<Rfq> = {}): Rfq => ({
     rfqId: "r1",
@@ -41,5 +41,25 @@ describe("requestState", () => {
 
     it("is closed one second past expiry even if the server still says OPEN", () => {
         expect(requestState(rfq(), "c1", new Date("2026-11-10T00:00:01.000Z"))).toBe("closed");
+    });
+});
+
+describe("expiresIn", () => {
+    const at = "2026-11-10T00:00:00.000Z";
+
+    it("counts days and hours while more than a day is left", () => {
+        expect(expiresIn(at, new Date("2026-11-07T20:00:00.000Z"))).toBe("Expires in 2 d 4 h");
+    });
+
+    it("counts hours and minutes within the last day", () => {
+        expect(expiresIn(at, new Date("2026-11-09T20:30:00.000Z"))).toBe("Expires in 3 h 30 min");
+    });
+
+    it("counts minutes within the last hour, never zero", () => {
+        expect(expiresIn(at, new Date("2026-11-09T23:59:30.000Z"))).toBe("Expires in 1 min");
+    });
+
+    it("says expired once the time has passed", () => {
+        expect(expiresIn(at, new Date("2026-11-10T00:00:00.000Z"))).toBe("Expired");
     });
 });
