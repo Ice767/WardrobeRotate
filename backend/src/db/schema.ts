@@ -2,9 +2,19 @@
 // because the repository maps a violated constraint back to a DuplicateError
 // by name; a generated name would silently stop matching.
 //
-// Regions, carriers and transport types are not here: they are reference data
-// defined in code, like the transport type specs, until an admin can edit them.
+// Regions and transport types are not here: they are reference data defined in
+// code. Carriers are stored, because new ones join through the site; the ones
+// defined in code are written into the table on every boot.
 export const SCHEMA = `
+CREATE TABLE IF NOT EXISTS carriers (
+    carrier_id       uuid PRIMARY KEY,
+    name             text NOT NULL,
+    legal_name       text NOT NULL,
+    transport_types  text[] NOT NULL,
+    cargo_categories text[] NOT NULL,
+    created_at       timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS users (
     user_id       uuid PRIMARY KEY,
     email         text NOT NULL CONSTRAINT users_email_key UNIQUE,

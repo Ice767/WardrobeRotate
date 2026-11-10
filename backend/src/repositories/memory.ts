@@ -1,4 +1,5 @@
 import type {StoredUser} from "../contracts/auth.contract";
+import type {Carrier} from "../contracts/carrier.contract";
 import type {Rfq, RfqQuote} from "../contracts/rfq.contract";
 import type {Shipment} from "../contracts/shipment.contract";
 import type {Tariff, TariffLaneKey} from "../contracts/tariff.contract";
@@ -16,6 +17,7 @@ const newestFirst = <T extends {createdAt: string}>(items: T[]): T[] =>
  * but a restart loses everything and two processes never see each other's data.
  */
 export const createMemoryRepositories = (): Repositories => {
+    const carriers = new Map<string, Carrier>();
     const users = new Map<string, StoredUser>();
     const userIdByEmail = new Map<string, string>();
     const tariffs = new Map<string, Tariff>();
@@ -55,6 +57,14 @@ export const createMemoryRepositories = (): Repositories => {
     };
 
     return {
+        carriers: {
+            // Copies both ways, so a caller changing its object cannot change what is stored.
+            list: async () => [...carriers.values()].map((c) => structuredClone(c)),
+            upsert: async (carrier) => {
+                carriers.set(carrier.carrierId, structuredClone(carrier));
+            },
+        },
+
         users: {
             findById: async (id) => users.get(id),
             findByEmail: async (email) => {

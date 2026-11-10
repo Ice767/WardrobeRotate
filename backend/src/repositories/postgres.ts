@@ -2,6 +2,7 @@ import pg from "pg";
 
 import type {StoredUser, UserRole} from "../contracts/auth.contract";
 import type {CargoCategory} from "../contracts/cargo.contract";
+import type {Carrier} from "../contracts/carrier.contract";
 import type {Rfq, RfqQuote} from "../contracts/rfq.contract";
 import type {Shipment, ShipmentEvent} from "../contracts/shipment.contract";
 import type {Tariff} from "../contracts/tariff.contract";
@@ -38,6 +39,14 @@ type Row = Record<string, unknown>;
 const iso = (value: unknown): string => (value as Date).toISOString();
 const optional = <K extends string, V>(key: K, value: V | null): Partial<Record<K, V>> =>
     (value === null ? {} : {[key]: value}) as Partial<Record<K, V>>;
+
+const toCarrier = (r: Row): Carrier => ({
+    carrierId: r.carrier_id as string,
+    name: r.name as string,
+    legalName: r.legal_name as string,
+    supportedTransportTypes: r.transport_types as TransportType[],
+    acceptedCargoCategories: r.cargo_categories as CargoCategory[],
+});
 
 const toUser = (r: Row): StoredUser => ({
     userId: r.user_id as string,
@@ -179,6 +188,20 @@ export const createPostgresRepositories = (connectionString: string): Repositori
     };
 
     return {
+        carriers: {
+            list: async () => (await pool.query("SELECT * FROM carriers")).rows.map(toCarrier),
+            upsert: async (c) => {
+                await pool.query(
+                    `INSERT INTO carriers (carrier_id, name, legal_name, transport_types, cargo_categories)
+                     VALUES ($1, $2, $3, $4, $5)
+                     ON CONFLICT (carrier_id) DO UPDATE
+                     SET name = EXCLUDED.name, legal_name = EXCLUDED.legal_name,
+                         transport_types = EXCLUDED.transport_types, cargo_categories = EXCLUDED.cargo_categories`,
+                    [c.carrierId, c.name, c.legalName, c.supportedTransportTypes, c.acceptedCargoCategories],
+                );
+            },
+        },
+
         users: {
             findById: (id) => one("SELECT * FROM users WHERE user_id = $1", [id], toUser),
             findByEmail: (email) => one("SELECT * FROM users WHERE email = $1", [email], toUser),

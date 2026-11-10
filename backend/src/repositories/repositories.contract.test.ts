@@ -5,6 +5,7 @@ import {after, before, describe, it} from "node:test";
 import pg from "pg";
 
 import type {StoredUser} from "../contracts/auth.contract";
+import type {Carrier} from "../contracts/carrier.contract";
 import type {Rfq, RfqQuote} from "../contracts/rfq.contract";
 import type {Shipment} from "../contracts/shipment.contract";
 import type {Tariff} from "../contracts/tariff.contract";
@@ -20,6 +21,11 @@ const NOW = new Date("2026-11-01T00:00:00.000Z");
 
 const user = (email: string): StoredUser => ({
     userId: randomUUID(), email, name: "Test", role: "CLIENT", passwordHash: "x", createdAt: NOW.toISOString(),
+});
+
+const carrier = (): Carrier => ({
+    carrierId: randomUUID(), name: "Test Freight", legalName: "Test Freight LLC",
+    supportedTransportTypes: ["AIR", "TRUCK"], acceptedCargoCategories: ["GENERAL", "DANGEROUS"],
 });
 
 const tariff = (over: Partial<Tariff> = {}): Tariff => ({
@@ -56,6 +62,24 @@ const contract = (name: string, open: () => Promise<Repositories>) => {
 
         after(async () => {
             await r.close();
+        });
+
+        it("stores a carrier with its lists intact", async () => {
+            const stored = carrier();
+            await r.carriers.upsert(stored);
+
+            assert.deepEqual((await r.carriers.list()).find((c) => c.carrierId === stored.carrierId), stored);
+        });
+
+        it("replaces a carrier saved again under the same id", async () => {
+            const stored = carrier();
+            await r.carriers.upsert(stored);
+            await r.carriers.upsert({...stored, name: "Renamed", supportedTransportTypes: ["SEA"]});
+
+            const matching = (await r.carriers.list()).filter((c) => c.carrierId === stored.carrierId);
+            assert.equal(matching.length, 1);
+            assert.equal(matching[0].name, "Renamed");
+            assert.deepEqual(matching[0].supportedTransportTypes, ["SEA"]);
         });
 
         it("refuses a second user with the same email", async () => {
@@ -193,7 +217,7 @@ if (testUrl) {
     contract("postgres", async () => {
         const admin = new pg.Client({connectionString: testUrl});
         await admin.connect();
-        await admin.query("DROP TABLE IF EXISTS shipments, rfq_quotes, rfqs, tariffs, users CASCADE");
+        await admin.query("DROP TABLE IF EXISTS shipments, rfq_quotes, rfqs, tariffs, users, carriers CASCADE");
         await admin.end();
 
         const repositories = createPostgresRepositories(testUrl);

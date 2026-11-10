@@ -1,4 +1,5 @@
 import type {StoredUser} from "../contracts/auth.contract";
+import type {Carrier} from "../contracts/carrier.contract";
 import type {Rfq, RfqQuote} from "../contracts/rfq.contract";
 import type {Shipment, ShipmentStatus} from "../contracts/shipment.contract";
 import type {Tariff, TariffLaneKey, TariffPrices} from "../contracts/tariff.contract";
@@ -27,6 +28,12 @@ export interface TariffFilter {
 export interface Scope {
     clientId?: string;
     carrierId?: string;
+}
+
+export interface CarrierRepository {
+    list(): Promise<Carrier[]>;
+    /** Insert, or replace the carrier already stored under this id. */
+    upsert(carrier: Carrier): Promise<void>;
 }
 
 export interface UserRepository {
@@ -73,6 +80,7 @@ export interface ShipmentRepository {
 }
 
 export interface Repositories {
+    carriers: CarrierRepository;
     users: UserRepository;
     tariffs: TariffRepository;
     rfqs: RfqRepository;

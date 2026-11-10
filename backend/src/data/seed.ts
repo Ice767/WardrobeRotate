@@ -1,6 +1,7 @@
 import {logger} from "../config/logger.config";
 import {repos} from "../repositories";
 import {createUserWithRole, findUserByEmail} from "../services/auth.service";
+import {loadCarriers, saveSeededCarriers} from "../services/carrier.service";
 import {carrierIdBySlug, seedReferenceData} from "./reference.seed";
 import {seedTariffs} from "./tariff.seed";
 
@@ -79,6 +80,8 @@ const seedDemoManager = async (): Promise<void> => {
 export const seedDemoData = async (): Promise<void> => {
     await repos().init();
     seedReferenceData();
+    await saveSeededCarriers();
+    await loadCarriers();
     await seedTariffs();
     await seedAdmin();
     await seedDemoManager();

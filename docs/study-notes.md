@@ -30,6 +30,10 @@ names the file to read.
   once. `backend/src/services/auth.service.ts`, `shipment.service.ts`
 - **One repository interface, two implementations, one contract test.**
   `backend/src/repositories/repositories.contract.test.ts`
+- **Why the carrier map stayed as a cache when carriers moved to a table**: every
+  price search reads carriers, so they are kept in memory and the table is written
+  first. The catch: a second server would not see a carrier added on the first until
+  it restarts. `backend/src/services/carrier.service.ts`
 - **Money in integer cents, one `Math.ceil` at the end.** `backend/src/services/price.calculator.ts`
 
 ## Frontend
