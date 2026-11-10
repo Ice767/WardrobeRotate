@@ -41,6 +41,10 @@ names the file to read.
   `frontend/src/main.tsx`
 - **Why a scrollbar moves centered content**, how `scrollbar-gutter: stable` prevents it,
   and why the MUI scroll lock then has to be switched off. `frontend/src/theme.ts`
+- **Why the console's search filters loaded data instead of calling the server**: the
+  menu counters already load every tariff, request and shipment, so filtering them in
+  the browser is instant and needs no new endpoint. It stops being right once a carrier
+  has more rows than one request should return. `frontend/src/console/search.ts`
 
 ## Deployment
 

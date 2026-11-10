@@ -1,7 +1,11 @@
 import type {Rfq, Shipment, Tariff} from "../api/types";
+import type {PillTone} from "../components/Pill";
 import {formatCents} from "../lib/format";
 
 export type SearchKind = "Tariff" | "Request" | "Shipment";
+
+/** The pill colour of each kind of hit, shared by the dropdown and the results page. */
+export const KIND_TONE: Record<SearchKind, PillTone> = {Tariff: "info", Request: "alert", Shipment: "neutral"};
 
 export interface SearchHit {
     kind: SearchKind;

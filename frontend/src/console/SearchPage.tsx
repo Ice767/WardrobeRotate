@@ -5,8 +5,7 @@ import {Link as RouterLink, useSearchParams} from "react-router-dom";
 
 import {Pill} from "../components/Pill";
 import {colors} from "../theme";
-import {KIND_TONE} from "./ConsoleSearch";
-import {searchConsole, type SearchKind} from "./search";
+import {KIND_TONE, searchConsole, type SearchKind} from "./search";
 import {useSearchData} from "./useSearchData";
 
 const GROUPS: Array<{kind: SearchKind; title: string}> = [
