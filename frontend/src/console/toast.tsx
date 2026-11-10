@@ -1,14 +1,10 @@
 import {Box} from "@mui/material";
-import {createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode} from "react";
+import {useCallback, useEffect, useRef, useState, type ReactNode} from "react";
 
 import {colors} from "../theme";
+import {ToastContext} from "./useToast";
 
 const TOAST_MS = 2600;
-
-const ToastContext = createContext<(message: string) => void>(() => {});
-
-/** Shows a short confirmation in the bottom-right corner of the console. */
-export const useToast = () => useContext(ToastContext);
 
 export const ToastProvider = ({children}: {children: ReactNode}) => {
     const [toast, setToast] = useState<{id: number; message: string} | null>(null);

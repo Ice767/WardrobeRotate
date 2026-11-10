@@ -26,7 +26,7 @@ import {formatCents, formatDays} from "../lib/format";
 import {colors, fonts} from "../theme";
 import {rowId, useFlashRow} from "./flash";
 import {TariffForm} from "./TariffForm";
-import {useToast} from "./toast";
+import {useToast} from "./useToast";
 
 type Editing = {kind: "create"} | {kind: "edit"; tariff: Tariff} | null;
 

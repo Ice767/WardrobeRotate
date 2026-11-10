@@ -5,7 +5,7 @@ import {errorText, useCargoCategoriesQuery, useCarriersQuery, useCurrentUser, us
 import {useFlashRow} from "./flash";
 import {RequestCard} from "./RequestCard";
 import {requestState, type RequestState} from "./requests";
-import {useToast} from "./toast";
+import {useToast} from "./useToast";
 
 const ORDER: Record<RequestState, number> = {open: 0, answered: 1, closed: 2};
 

@@ -9,7 +9,7 @@ import {formatCents} from "../lib/format";
 import {colors, fonts} from "../theme";
 import {rowId, useFlashRow} from "./flash";
 import {nextStatus, progressPercent} from "./shipmentSteps";
-import {useToast} from "./toast";
+import {useToast} from "./useToast";
 
 const LABEL: Record<ShipmentStatus, string> = {
     CONFIRMED: "Confirmed",

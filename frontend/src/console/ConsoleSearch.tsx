@@ -3,14 +3,12 @@ import {alpha} from "@mui/material/styles";
 import {useEffect, useMemo, useRef, useState, type KeyboardEvent} from "react";
 import {Link as RouterLink, useLocation, useNavigate, useSearchParams} from "react-router-dom";
 
-import {Pill, type PillTone} from "../components/Pill";
+import {Pill} from "../components/Pill";
 import {colors} from "../theme";
-import {searchConsole, type SearchKind} from "./search";
+import {KIND_TONE, searchConsole} from "./search";
 import {useSearchData} from "./useSearchData";
 
 const MAX_SHOWN = 6;
-
-export const KIND_TONE: Record<SearchKind, PillTone> = {Tariff: "info", Request: "alert", Shipment: "neutral"};
 
 export const ConsoleSearch = () => {
     const navigate = useNavigate();
