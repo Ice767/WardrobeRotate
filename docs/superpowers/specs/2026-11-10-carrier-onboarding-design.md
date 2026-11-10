@@ -97,8 +97,8 @@ Each country is one entry of configuration, not code:
   registry: "FMCSA" }
 ```
 
-First set: `US` (EIN; USDOT/MC; FMCSA), `IL` (company number ח.פ. shown in
-English as "Company number (H.P.)", 9 digits; manual), `RU` (INN / OGRN, 10 or
+First set: `US` (EIN; USDOT/MC; FMCSA), `IL` ("Company number (H.P.)", 9
+digits; manual), `RU` (INN / OGRN, 10 or
 13 digits; manual), the EU member states (VAT number; VIES), and `OTHER`
 (free-text number, 3–40 characters; manual). The frontend reads the profiles
 from `GET /api/onboarding/countries` so labels and hints never drift from the
